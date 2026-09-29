@@ -1,9 +1,8 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { homeFor } from "@/lib/auth/roles";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      
-    </div>
-  );
+export default async function Home() {
+  const user = await getSession();
+  redirect(user ? homeFor(user.role) : "/login");
 }
