@@ -97,6 +97,9 @@ export const settings: AppSettings = {
   damageAlertEmails: ["justin@drs.test"],
 };
 
+/** Results of offline uploads, keyed by the phone's item ID (prevents duplicates on retry) */
+export const syncReceipts: Record<string, { id: string }> = {};
+
 export const jobs: Job[] = [
   {
     id: "j-1",

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Barlow } from "next/font/google";
 import { Toaster } from "sonner";
+import { SwRegister } from "@/components/pwa/sw-register";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,6 +21,13 @@ export const metadata: Metadata = {
   title: { default: "DRS Performance Portal", template: "%s · DRS Portal" },
   description:
     "Driver and sales performance portal for Direct Relocation Services",
+  applicationName: "DRS Portal",
+  appleWebApp: {
+    capable: true,
+    title: "DRS Portal",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -46,6 +54,7 @@ export default function RootLayout({
             style: { fontFamily: "var(--font-inter)", fontSize: 15 },
           }}
         />
+        <SwRegister />
       </body>
     </html>
   );

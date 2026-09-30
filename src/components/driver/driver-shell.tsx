@@ -1,6 +1,8 @@
 "use client";
 
 import { PortalShell } from "@/components/shared/portal-shell";
+import { SyncManager } from "@/components/pwa/sync-manager";
+import { SyncStatus } from "@/components/pwa/sync-status";
 import { DRIVER_NAV, DRIVER_NAV_GROUPS } from "@/lib/nav";
 import type { User } from "@/types";
 
@@ -18,8 +20,9 @@ export function DriverShell({
       homeHref="/driver"
       navGroups={DRIVER_NAV_GROUPS}
       bottomNav={DRIVER_NAV}
-      contentClassName=""
+      headerExtra={<SyncStatus />}
     >
+      <SyncManager userId={user.id} />
       {children}
     </PortalShell>
   );

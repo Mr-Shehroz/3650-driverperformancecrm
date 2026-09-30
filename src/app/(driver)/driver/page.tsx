@@ -10,11 +10,17 @@ import {
   Truck,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getDriverJobSummaries, getDriverMetrics } from "@/lib/data";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JobCard } from "@/components/driver/job-card";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
+import {
+  getDriverJobSummaries,
+  getDriverMetrics,
+  getDrivers,
+} from "@/lib/data";
+import { SnapshotSaver } from "@/components/driver/snapshot-saver";
 
 export default async function DriverHome() {
   const user = await requireRole("driver");
@@ -24,15 +30,32 @@ export default async function DriverHome() {
     to: format(endOfMonth(now), "yyyy-MM-dd"),
   };
 
-  const [metrics, jobs] = await Promise.all([
+  const [metrics, jobs, drivers] = await Promise.all([
     getDriverMetrics(user.id, { range }),
     getDriverJobSummaries(user.id),
+    getDrivers(),
   ]);
-  const recent = jobs.slice(0, 3);
+  const recent = jobs.slice(0, 6);
   const firstName = user.name.split(" ")[0];
 
   return (
     <div className="space-y-7 sm:space-y-9">
+      <SnapshotSaver
+        snapshot={{
+          user: { id: user.id, name: user.name },
+          drivers: drivers.map((d) => ({ id: d.id, name: d.name })),
+          jobs: jobs.slice(0, 25).map((j) => ({
+            id: j.id,
+            jobNumber: j.jobNumber,
+            date: j.date,
+            originCity: j.originCity,
+            originState: j.originState,
+            destCity: j.destCity,
+            destState: j.destState,
+            deliveredBy: j.deliveredBy,
+          })),
+        }}
+      />
       {/* Greeting */}
       <div>
         <p className="text-sm font-medium text-muted-foreground">
@@ -42,6 +65,9 @@ export default async function DriverHome() {
           Hi, {firstName}
         </h1>
       </div>
+
+      {/* Install app (only shows on phones that haven't installed it) */}
+      <InstallPrompt />
 
       {/* Primary action */}
       <Link
@@ -128,13 +154,19 @@ export default async function DriverHome() {
         </div>
         <div className="mt-4 space-y-3">
           {recent.length ? (
-            recent.map((job) => <JobCard key={job.id} job={job} />)
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {recent.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
+            </div>
           ) : (
-            <EmptyState
-              icon={ClipboardList}
-              title="No jobs yet"
-              description="Your jobs will show here after you start your first one."
-            />
+            <div className="mt-4">
+              <EmptyState
+                icon={ClipboardList}
+                title="No jobs yet"
+                description="Your jobs will show here after you start your first one."
+              />
+            </div>
           )}
         </div>
       </section>

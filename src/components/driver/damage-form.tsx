@@ -14,6 +14,9 @@ import {
 import { PhotoPicker } from "./photo-picker";
 import { FormActions } from "./form-actions";
 import { createDamageAction } from "@/app/(driver)/driver/actions";
+import { damageSchema } from "@/lib/validation/driver";
+import { toast } from "sonner";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
 
 type YesNo = "yes" | "no" | "";
 
@@ -40,16 +43,29 @@ export function DamageForm({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    const payload = {
+      jobId,
+      item,
+      description,
+      photos,
+      claimFiled: claim === "" ? undefined : claim === "yes",
+      estimatedCost: cost === "" ? undefined : Number(cost),
+    };
+
     startTransition(async () => {
-      const res = await createDamageAction({
-        jobId,
-        item,
-        description,
-        photos,
-        claimFiled:
-          claim === "" ? (undefined as unknown as boolean) : claim === "yes",
-        estimatedCost:
-          cost === "" ? (undefined as unknown as number) : Number(cost),
+      const res = await submitOrQueue({
+        type: "damage",
+        schema: damageSchema,
+        payload,
+        jobRef: jobId,
+        label: `Damage: ${item || "item"}`,
+        online: (data) => createDamageAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath(`/driver/jobs/${jobId}`);
+        },
       });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);

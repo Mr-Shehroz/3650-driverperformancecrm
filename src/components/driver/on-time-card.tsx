@@ -5,6 +5,8 @@ import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { setOnTimeAction } from "@/app/(driver)/driver/actions";
 import { cn } from "@/lib/utils";
+import { onTimeSchema } from "@/lib/validation/driver";
+import { submitOrQueue } from "@/lib/offline/submit";
 
 type Field = "pickup" | "delivery";
 
@@ -24,12 +26,24 @@ function Row({
   const set = (v: boolean) => {
     setClicked(v);
     startTransition(async () => {
-      const res = await setOnTimeAction({ jobId, field, value: v });
+      const res = await submitOrQueue({
+        type: "on_time",
+        schema: onTimeSchema,
+        payload: { jobId, field, value: v },
+        jobRef: jobId,
+        label: `${field === "pickup" ? "Pickup" : "Delivery"} ${v ? "on time" : "late"}`,
+        online: (data) => setOnTimeAction(data),
+        afterQueue: () =>
+          toast.success(
+            "Saved on this phone. It will upload when you're back online.",
+          ),
+      });
       if (res?.error) toast.error(res.error);
-      else
+      else if (!res?.queued) {
         toast.success(
           `${field === "pickup" ? "Pickup" : "Delivery"} marked ${v ? "on time" : "late"}`,
         );
+      }
       setClicked(null);
     });
   };

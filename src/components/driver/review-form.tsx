@@ -14,6 +14,9 @@ import { PhotoPicker } from "./photo-picker";
 import { FormActions } from "./form-actions";
 import { createReviewAction } from "@/app/(driver)/driver/actions";
 import { REVIEW_PLATFORM_LABELS, type ReviewPlatform } from "@/types";
+import { toast } from "sonner";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
+import { reviewSchema } from "@/lib/validation/driver";
 
 const PLATFORMS = (Object.keys(REVIEW_PLATFORM_LABELS) as ReviewPlatform[]).map(
   (p) => ({
@@ -41,17 +44,29 @@ export function ReviewForm({ jobId }: { jobId: string }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    const payload = {
+      jobId,
+      platform: platform || undefined,
+      stars,
+      driverMentioned: mentioned === "" ? undefined : mentioned === "yes",
+      link,
+      screenshot: screenshot[0] ?? "",
+    };
+
     startTransition(async () => {
-      const res = await createReviewAction({
-        jobId,
-        platform: platform as ReviewPlatform,
-        stars,
-        driverMentioned:
-          mentioned === ""
-            ? (undefined as unknown as boolean)
-            : mentioned === "yes",
-        link,
-        screenshot: screenshot[0] ?? "",
+      const res = await submitOrQueue({
+        type: "review",
+        schema: reviewSchema,
+        payload,
+        jobRef: jobId,
+        label: `Review: ${stars || "?"}★`,
+        online: (data) => createReviewAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath(`/driver/jobs/${jobId}`);
+        },
       });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);

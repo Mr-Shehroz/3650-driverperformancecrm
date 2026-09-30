@@ -15,6 +15,11 @@ export default async function NewDamagePage({
       job={job}
       title="Report damage"
       description="Damage that happened during this move."
+      tips={[
+        "Photograph the damage as soon as you notice it, from more than one angle.",
+        "Write what happened in plain words. Admins use this for claims.",
+        "Damage on partner-delivered jobs is recorded but doesn't count against your damage rate.",
+      ]}
     >
       <DamageForm
         jobId={job.id}

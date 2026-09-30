@@ -11,6 +11,9 @@ import {
 import { FormActions } from "./form-actions";
 import { createUpsellAction } from "@/app/(driver)/driver/actions";
 import { UPSELL_TYPE_LABELS, type UpsellType } from "@/types";
+import { upsellSchema } from "@/lib/validation/driver";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
+import { toast } from "sonner";
 
 const TYPES = (Object.keys(UPSELL_TYPE_LABELS) as UpsellType[]).map((t) => ({
   value: t,
@@ -31,12 +34,26 @@ export function UpsellForm({ jobId }: { jobId: string }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    const payload = {
+      jobId,
+      type: type || undefined,
+      amount: amount === "" ? undefined : Number(amount),
+    };
+
     startTransition(async () => {
-      const res = await createUpsellAction({
-        jobId,
-        type: type as UpsellType,
-        amount:
-          amount === "" ? (undefined as unknown as number) : Number(amount),
+      const res = await submitOrQueue({
+        type: "upsell",
+        schema: upsellSchema,
+        payload,
+        jobRef: jobId,
+        label: `Upsell: $${amount || 0}`,
+        online: (data) => createUpsellAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath(`/driver/jobs/${jobId}`);
+        },
       });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);
