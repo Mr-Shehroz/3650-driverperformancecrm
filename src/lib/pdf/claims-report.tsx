@@ -6,10 +6,9 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
-import { COMPANY } from "@/lib/company";
 import { formatDate, formatDateTimeET } from "@/lib/format";
 import { ACTION_LABELS, diffLines } from "@/lib/audit";
-import type { AuditEntry, JobDetail } from "@/types";
+import type { AuditEntry, CompanyInfo, JobDetail } from "@/types";
 
 const RED = "#d71920";
 const BLACK = "#111111";
@@ -145,6 +144,7 @@ type Props = {
   audit: AuditEntry[];
   names: Record<string, string>;
   generatedAt: string;
+  company: CompanyInfo;
 };
 
 export function ClaimsReport({
@@ -154,13 +154,14 @@ export function ClaimsReport({
   audit,
   names,
   generatedAt,
+  company,
 }: Props) {
   const entries = job.preDamages.filter((p) => !p.deletedAt);
 
   return (
     <Document
       title={`Pre-Existing Damage Report — ${job.jobNumber}`}
-      author={COMPANY.name}
+      author={company.name}
       subject="Claims defense record"
     >
       <Page size="LETTER" style={s.page}>
@@ -169,16 +170,16 @@ export function ClaimsReport({
           <View style={s.brandRow}>
             <Text style={s.logo}>DRS</Text>
             <View>
-              <Text style={s.company}>{COMPANY.name}</Text>
+              <Text style={s.company}>{company.name}</Text>
               <Text style={s.small}>
-                USDOT #{COMPANY.usdot} · MC #{COMPANY.mc}
+                USDOT #{company.usdot} · MC #{company.mc}
               </Text>
             </View>
           </View>
           <View style={s.right}>
-            <Text style={s.small}>{COMPANY.address}</Text>
-            <Text style={s.small}>{COMPANY.phone}</Text>
-            <Text style={s.small}>{COMPANY.email}</Text>
+            <Text style={s.small}>{company.address}</Text>
+            <Text style={s.small}>{company.phone}</Text>
+            <Text style={s.small}>{company.email}</Text>
           </View>
         </View>
 
@@ -320,7 +321,7 @@ export function ClaimsReport({
         {/* Footer (repeats every page) */}
         <View style={s.footer} fixed>
           <Text>
-            Report generated from the {COMPANY.name} Performance Portal on{" "}
+            Report generated from the {company.name} Performance Portal on{" "}
             {generatedAt}. Job {job.jobNumber}.
           </Text>
           <Text

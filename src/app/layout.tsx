@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Barlow } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,7 +36,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${barlow.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{
+            style: { fontFamily: "var(--font-inter)", fontSize: 15 },
+          }}
+        />
+      </body>
     </html>
   );
 }

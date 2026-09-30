@@ -4,14 +4,21 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/session";
 import {
+  createUser,
+  emailExists,
   overrideLeadCost,
   restoreRecord,
+  setUserActive,
+  setUserPassword,
   setVerified,
   softDeleteRecord,
   updateJob,
   updatePreDamage,
+  updateSettings,
+  updateUser,
   upsertLeadCost,
 } from "@/lib/data";
+import { generateTempPassword } from "@/lib/password";
 import type { LeadSource, RecordKind } from "@/types";
 
 export type AdminResult = {
@@ -173,4 +180,114 @@ export async function overrideLeadCostAction(
   if (!lead) return { error: "Lead not found." };
   revalidatePath("/admin/sales", "layout");
   revalidatePath("/sales", "layout");
+}
+
+/* ---------- Users ---------- */
+const userSchema = z.object({
+  name: z.string().trim().min(2, "Enter the full name").max(80),
+  email: z.string().trim().email("Enter a valid email"),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  role: z.enum(["admin", "driver", "sales_rep"], { message: "Select a role" }),
+});
+
+export type UserInput = z.infer<typeof userSchema>;
+
+export async function createUserAction(
+  input: UserInput,
+): Promise<{
+  fieldErrors?: Record<string, string>;
+  error?: string;
+  tempPassword?: string;
+}> {
+  await requireRole("admin");
+  const parsed = userSchema.safeParse(input);
+  if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
+  if (await emailExists(parsed.data.email)) {
+    return { fieldErrors: { email: "A user with this email already exists" } };
+  }
+
+  const tempPassword = generateTempPassword();
+  await createUser(parsed.data, tempPassword);
+  revalidatePath("/admin", "layout");
+  return { tempPassword };
+}
+
+export async function updateUserAction(
+  id: string,
+  input: UserInput,
+): Promise<AdminResult> {
+  const admin = await requireRole("admin");
+  const parsed = userSchema.safeParse(input);
+  if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
+  if (await emailExists(parsed.data.email, id)) {
+    return { fieldErrors: { email: "A user with this email already exists" } };
+  }
+  if (id === admin.id && parsed.data.role !== "admin") {
+    return { fieldErrors: { role: "You can't change your own role" } };
+  }
+
+  const user = await updateUser(id, parsed.data);
+  if (!user) return { error: "User not found." };
+  revalidatePath("/admin", "layout");
+}
+
+export async function setUserActiveAction(
+  id: string,
+  active: boolean,
+): Promise<AdminResult> {
+  const admin = await requireRole("admin");
+  if (id === admin.id && !active)
+    return { error: "You can't deactivate your own account." };
+  const user = await setUserActive(id, active);
+  if (!user) return { error: "User not found." };
+  revalidatePath("/admin", "layout");
+}
+
+export async function resetPasswordAction(
+  id: string,
+): Promise<{ error?: string; tempPassword?: string }> {
+  await requireRole("admin");
+  const tempPassword = generateTempPassword();
+  const ok = await setUserPassword(id, tempPassword);
+  if (!ok) return { error: "User not found." };
+  return { tempPassword };
+}
+
+/* ---------- Settings ---------- */
+const settingsSchema = z.object({
+  company: z.object({
+    name: z.string().trim().min(2, "Company name is required").max(120),
+    usdot: z.string().trim().min(1, "USDOT # is required").max(20),
+    mc: z.string().trim().min(1, "MC # is required").max(20),
+    address: z.string().trim().min(3, "Address is required").max(200),
+    phone: z.string().trim().min(7, "Phone is required").max(30),
+    email: z.string().trim().email("Enter a valid email"),
+  }),
+  damageAlertEmails: z
+    .array(z.string().trim().email("One of the alert emails is invalid"))
+    .max(20),
+});
+
+export type SettingsInput = z.infer<typeof settingsSchema>;
+
+export async function updateSettingsAction(
+  input: SettingsInput,
+): Promise<AdminResult> {
+  await requireRole("admin");
+  const parsed = settingsSchema.safeParse(input);
+  if (!parsed.success) {
+    const out: Record<string, string> = {};
+    for (const i of parsed.error.issues) {
+      const key = i.path.join(".");
+      if (!out[key]) out[key] = i.message;
+    }
+    return { fieldErrors: out };
+  }
+  await updateSettings({
+    ...parsed.data,
+    damageAlertEmails: Array.from(
+      new Set(parsed.data.damageAlertEmails.map((e) => e.toLowerCase())),
+    ),
+  });
+  revalidatePath("/admin/settings");
 }

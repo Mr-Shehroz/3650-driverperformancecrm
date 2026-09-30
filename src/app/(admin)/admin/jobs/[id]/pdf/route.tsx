@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getSession } from "@/lib/auth/session";
-import { getAuditLog, getJobDetail, getUsers } from "@/lib/data";
+import { getAuditLog, getJobDetail, getSettings, getUsers } from "@/lib/data";
 import { formatDateTimeET } from "@/lib/format";
 import { ClaimsReport } from "@/lib/pdf/claims-report";
 
@@ -19,11 +19,14 @@ export async function GET(
   const job = await getJobDetail(id);
   if (!job) return new NextResponse("Job not found", { status: 404 });
 
-  const [users, audit] = await Promise.all([
+  const [users, audit, settings] = await Promise.all([
     getUsers(),
     getAuditLog({ jobId: id }),
+    getSettings(),
   ]);
-  const names = Object.fromEntries(users.map((u) => [u.id, u.name]));
+  const names = Object.fromEntries(
+    users.map((u: { id: string; name: string }) => [u.id, u.name]),
+  );
   const crewNames = job.crewIds
     .map((c) => names[c])
     .filter(Boolean)
@@ -37,6 +40,7 @@ export async function GET(
       audit={audit}
       names={names}
       generatedAt={formatDateTimeET(new Date().toISOString())}
+      company={settings.company}
     />,
   );
 

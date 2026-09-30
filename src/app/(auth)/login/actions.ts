@@ -2,8 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getUserByEmail } from "@/lib/data";
-import { MOCK_PASSWORD } from "@/lib/mock/data";
+import { getUserByEmail, verifyPassword } from "@/lib/data";
 import { SESSION_COOKIE, homeFor } from "@/lib/auth/roles";
 
 export type LoginState = { error?: string } | undefined;
@@ -18,8 +17,9 @@ export async function loginAction(
   if (!email || !password) return { error: "Enter your email and password." };
 
   const user = await getUserByEmail(email);
-  if (!user || password !== MOCK_PASSWORD)
+  if (!user || !(await verifyPassword(user.id, password))) {
     return { error: "Invalid email or password." };
+  }
   if (!user.active)
     return { error: "Your account is deactivated. Contact admin." };
 

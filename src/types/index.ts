@@ -231,3 +231,23 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
   reason?: string;
 }
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Admin",
+  driver: "Driver",
+  sales_rep: "Sales Rep",
+};
+
+export interface CompanyInfo {
+  name: string;
+  usdot: string;
+  mc: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
+export interface AppSettings {
+  company: CompanyInfo;
+  damageAlertEmails: string[];
+}

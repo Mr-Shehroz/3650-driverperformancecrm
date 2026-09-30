@@ -31,6 +31,7 @@ import { Pill } from "@/components/shared/pill";
 import { PhotoThumb } from "@/components/shared/photo-thumb";
 import { REVIEW_PLATFORM_LABELS, UPSELL_TYPE_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
+import { OnTimeCard } from "@/components/driver/on-time-card";
 
 function Section({
   title,
@@ -185,6 +186,12 @@ export default async function DriverJobDetail({
           </div>
         </div>
       </div>
+
+      <OnTimeCard
+        jobId={job.id}
+        pickup={job.onTimePickup}
+        delivery={job.onTimeDelivery}
+      />
 
       {/* Pre-existing damage */}
       <Section
