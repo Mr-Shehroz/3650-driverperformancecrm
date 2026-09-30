@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, Users as UsersIcon, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getUsers } from "@/lib/data";
 import { PageHeader } from "@/components/shared/page-header";
@@ -10,6 +10,10 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { AddUserButton } from "@/components/admin/add-user-button";
 import { UserRowActions } from "@/components/admin/user-row-actions";
 import { ROLE_LABELS, type Role } from "@/types";
+import { Users as UsersIcon } from "lucide-react";
+import { SearchInput } from "@/components/shared/search-input";
+
+export const metadata = { title: "Users" };
 
 const ROLE_TONE: Record<Role, "dark" | "primary" | "neutral"> = {
   admin: "dark",
@@ -17,19 +21,28 @@ const ROLE_TONE: Record<Role, "dark" | "primary" | "neutral"> = {
   sales_rep: "neutral",
 };
 
+type StatusFilter = "active" | "inactive";
+
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; q?: string }>;
+  searchParams: Promise<{ role?: string; q?: string; status?: string }>;
 }) {
   const me = await requireRole("admin");
-  const { role, q = "" } = await searchParams;
+  const { role, q = "", status } = await searchParams;
   const all = await getUsers();
 
   const roleFilter = role && role in ROLE_LABELS ? (role as Role) : undefined;
+  const statusFilter: StatusFilter | undefined =
+    status === "active" || status === "inactive" ? status : undefined;
   const query = q.trim().toLowerCase();
+
   const users = all
     .filter((u) => !roleFilter || u.role === roleFilter)
+    .filter(
+      (u) =>
+        !statusFilter || (statusFilter === "active" ? u.active : !u.active),
+    )
     .filter(
       (u) =>
         !query ||
@@ -41,54 +54,59 @@ export default async function UsersPage({
         Number(b.active) - Number(a.active) || a.name.localeCompare(b.name),
     );
 
-  const count = (r: Role) => all.filter((u) => u.role === r).length;
+  const roleCount = (r: Role) => all.filter((u) => u.role === r).length;
   const roleOptions = (Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
     value: r,
-    label: `${ROLE_LABELS[r]}s (${count(r)})`,
+    label: `${ROLE_LABELS[r]}s (${roleCount(r)})`,
   }));
+
+  const activeCount = all.filter((u) => u.active).length;
+  const inactiveCount = all.length - activeCount;
+  const statusOptions = [
+    { value: "active", label: `Active (${activeCount})` },
+    { value: "inactive", label: `Inactive (${inactiveCount})` },
+  ];
+
+  // Keeps role + status when clearing the search
+  const clearParams = new URLSearchParams();
+  if (roleFilter) clearParams.set("role", roleFilter);
+  if (statusFilter) clearParams.set("status", statusFilter);
+  const clearHref = `/admin/users${clearParams.toString() ? `?${clearParams}` : ""}`;
 
   return (
     <div>
       <PageHeader
         title="Users"
-        description={`${all.filter((u) => u.active).length} active of ${all.length} total`}
+        description={`${activeCount} active of ${all.length} total`}
         actions={<AddUserButton currentUserId={me.id} />}
       />
 
-      <div className="mb-5 flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
-        <ParamPills
-          param="role"
-          options={roleOptions}
-          allLabel={`All (${all.length})`}
-        />
-        <form className="relative lg:w-80">
-          {roleFilter && <input type="hidden" name="role" value={roleFilter} />}
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search name or email"
-            className="h-11 w-full rounded-lg border bg-white pl-10 pr-10 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:p-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+          <ParamPills
+            param="role"
+            options={roleOptions}
+            allLabel={`All (${all.length})`}
           />
-          {q && (
-            <Link
-              href={
-                roleFilter ? `/admin/users?role=${roleFilter}` : "/admin/users"
-              }
-              aria-label="Clear search"
-              className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-            >
-              <X className="h-4 w-4" />
-            </Link>
-          )}
-        </form>
+          <span
+            aria-hidden
+            className="hidden h-6 w-px shrink-0 bg-border lg:block"
+          />
+          <ParamPills
+            param="status"
+            options={statusOptions}
+            allLabel="Any status"
+          />
+        </div>
+
+        <SearchInput placeholder="Search name or email" className="xl:w-80" />
       </div>
 
       {users.length === 0 ? (
         <EmptyState
           icon={UsersIcon}
           title="No users found"
-          description="Try a different search or role."
+          description="Try a different search, role or status."
         />
       ) : (
         <>
@@ -104,7 +122,7 @@ export default async function UsersPage({
                 }
               >
                 <div className="flex items-center gap-3">
-                  <UserAvatar name={u.name} />
+                  <UserAvatar name={u.name} src={u.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">
                       {u.name}{" "}
@@ -164,6 +182,7 @@ export default async function UsersPage({
                         <div className="flex items-center gap-3">
                           <UserAvatar
                             name={u.name}
+                            src={u.avatarUrl}
                             className="h-9 w-9 text-xs"
                           />
                           <div className="min-w-0">

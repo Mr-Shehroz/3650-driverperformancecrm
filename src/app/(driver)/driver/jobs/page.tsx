@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { ClipboardList, PlusCircle, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getDriverJobSummaries } from "@/lib/data";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JobCard } from "@/components/driver/job-card";
+import { ClipboardList, PlusCircle } from "lucide-react";
+import { SearchInput } from "@/components/shared/search-input";
 
 export const metadata = { title: "Job History" };
 
@@ -32,24 +34,11 @@ export default async function DriverJobsPage({
         }
       />
 
-      <form className="relative mb-5 max-w-xl">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search job number or city"
-          className="h-12 w-full rounded-xl border bg-card pl-12 pr-12 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-        />
-        {q && (
-          <Link
-            href="/driver/jobs"
-            aria-label="Clear search"
-            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </Link>
-        )}
-      </form>
+      <SearchInput
+        placeholder="Search job number or city"
+        className="mb-5 max-w-xl"
+        inputClassName="h-12 rounded-xl bg-card"
+      />
 
       {jobs.length ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

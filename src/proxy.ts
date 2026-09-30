@@ -1,26 +1,61 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { users } from "@/lib/mock/data";
-import { SESSION_COOKIE, ROUTE_ROLES, homeFor } from "@/lib/auth/roles";
+import { createServerClient } from "@supabase/ssr";
+import { matchRoute } from "@/lib/auth/roles";
 
-export function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const rule = ROUTE_ROLES.find((r) => pathname.startsWith(r.prefix));
-  const uid = req.cookies.get(SESSION_COOKIE)?.value;
-  const user = uid ? users.find((u) => u.id === uid && u.active) : null;
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request });
 
-  if (pathname === "/login" && user) {
-    return NextResponse.redirect(new URL(homeFor(user.role), req.url));
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // Refreshes the session if needed and verifies the token
+  const { data } = await supabase.auth.getClaims();
+  const loggedIn = !!data?.claims;
+
+  const redirectTo = (path: string) => {
+    const url = request.nextUrl.clone();
+    url.pathname = path;
+    url.search = "";
+    const res = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
+  const { pathname } = request.nextUrl;
+
+  // Logged-in users don't need the login page; "/" sends them to their portal
+  if (pathname === "/login") {
+    return loggedIn ? redirectTo("/") : response;
   }
 
-  if (!rule) return NextResponse.next();
+  // Portal pages need a login. The layouts check the role (from the profiles table).
+  if (matchRoute(pathname) && !loggedIn) {
+    return redirectTo("/login");
+  }
 
-  if (!user) return NextResponse.redirect(new URL("/login", req.url));
-  if (user.role !== rule.role)
-    return NextResponse.redirect(new URL(homeFor(user.role), req.url));
-
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: ["/login", "/admin/:path*", "/driver/:path*", "/sales/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|icons/|sw\\.js|manifest\\.webmanifest|favicon\\.ico|offline|driver-offline|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+  ],
 };
