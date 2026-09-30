@@ -17,3 +17,10 @@ export async function requireRole(role: Role) {
   if (user.role !== role) redirect("/");
   return user;
 }
+
+/** Any logged-in, active user (any role) */
+export async function requireUser() {
+  const user = await getSession();
+  if (!user) redirect("/login");
+  return user;
+}

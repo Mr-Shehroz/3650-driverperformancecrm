@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Loader2, Pencil, RotateCcw, X } from "lucide-react";
 import { overrideLeadCostAction } from "@/app/(admin)/admin/actions";
 import { formatCurrency } from "@/lib/format";
+import { toast } from "sonner";
 
 export function LeadCostCell({
   id,
@@ -21,8 +22,15 @@ export function LeadCostCell({
   const run = (next: number | null) =>
     startTransition(async () => {
       const res = await overrideLeadCostAction(id, next);
-      if (res?.error) alert(res.error);
-      else setEditing(false);
+      if (res?.error) toast.error(res.error);
+      else {
+        setEditing(false);
+        toast.success(
+          next === null
+            ? "Lead cost reset to source cost"
+            : "Lead cost updated",
+        );
+      }
     });
 
   if (editing) {

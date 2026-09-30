@@ -11,6 +11,7 @@ import {
 } from "@/components/driver/form-bits";
 import { correctPreDamageAction } from "@/app/(admin)/admin/actions";
 import type { PreDamage } from "@/types";
+import { toast } from "sonner";
 
 export function PreDamageCorrection({ record }: { record: PreDamage }) {
   const [open, setOpen] = useState(false);
@@ -51,6 +52,7 @@ export function PreDamageCorrection({ record }: { record: PreDamage }) {
       else {
         setV((s) => ({ ...s, reason: "" }));
         setOpen(false);
+        toast.success("Record corrected. The original is kept in the history.");
       }
     });
   };

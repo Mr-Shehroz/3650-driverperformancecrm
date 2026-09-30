@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { toggleVerifiedAction } from "@/app/(admin)/admin/actions";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function VerifyToggle({
   kind,
@@ -24,7 +25,9 @@ export function VerifyToggle({
       const res = await toggleVerifiedAction(kind, id, next);
       if (res?.error) {
         setValue(!next);
-        alert(res.error);
+        toast.error(res.error);
+      } else {
+        toast.success(next ? "Marked as verified" : "Verification removed");
       }
     });
   };

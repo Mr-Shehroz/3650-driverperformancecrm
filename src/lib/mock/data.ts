@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/company";
 import type {
   User,
   Job,
@@ -10,6 +11,7 @@ import type {
   LeadSource,
   LeadStatus,
   AuditEntry,
+  AppSettings,
 } from "@/types";
 
 export const MOCK_PASSWORD = "demo1234";
@@ -86,6 +88,14 @@ export const users: User[] = [
     active: true,
   },
 ];
+
+/** Per-user passwords set by admins. Users not listed here use MOCK_PASSWORD. */
+export const passwords: Record<string, string> = {};
+
+export const settings: AppSettings = {
+  company: { ...COMPANY },
+  damageAlertEmails: ["justin@drs.test"],
+};
 
 export const jobs: Job[] = [
   {

@@ -10,6 +10,7 @@ import { LogoutButton } from "@/components/shared/logout-button";
 import { getActiveHref, type NavGroup, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
+import { UserMenu } from "@/components/shared/user-menu";
 
 /* ---------- Sidebar preference store (localStorage) ---------- */
 const STORAGE_KEY = "drs_sidebar_collapsed";
@@ -155,21 +156,28 @@ function SidebarContent({
       <div className="shrink-0 border-t border-sidebar-border p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
         <div
           className={cn(
-            "flex items-center rounded-lg py-2",
-            rail ? "flex-col gap-2 px-0" : "gap-3 px-2",
+            "flex items-center rounded-lg",
+            rail ? "flex-col gap-2 py-2" : "gap-2",
           )}
         >
-          <span title={user.name}>
+          <Link
+            href={`${homeHref}/profile`}
+            title={rail ? `${user.name} · My profile` : "My profile"}
+            className={cn(
+              "flex min-w-0 items-center rounded-lg transition hover:bg-white/5",
+              rail ? "justify-center p-1" : "flex-1 gap-3 px-2 py-2",
+            )}
+          >
             <UserAvatar name={user.name} />
-          </span>
-          {!rail && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">
-                {user.name}
-              </p>
-              <p className="truncate text-xs text-white/50">{user.email}</p>
-            </div>
-          )}
+            {!rail && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">
+                  {user.name}
+                </p>
+                <p className="truncate text-xs text-white/50">{user.email}</p>
+              </div>
+            )}
+          </Link>
           <LogoutButton tone="dark" iconOnly />
         </div>
       </div>
@@ -183,7 +191,7 @@ export function PortalShell({
   homeHref,
   navGroups,
   bottomNav,
-  contentClassName = "max-w-[1480px]",
+  contentClassName = "",
   children,
 }: Props) {
   const pathname = usePathname();
@@ -282,7 +290,12 @@ export function PortalShell({
       >
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-          <div className="flex h-14 items-center gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              "mx-auto flex h-14 w-full items-center gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6 lg:px-8",
+              contentClassName,
+            )}
+          >
             {/* Mobile / tablet: open drawer */}
             <button
               onClick={openDrawer}
@@ -321,19 +334,12 @@ export function PortalShell({
               />
             </Link>
 
-            <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              <div className="hidden text-right sm:block">
-                <p className="max-w-[180px] truncate text-sm font-semibold leading-tight">
-                  {user.name}
-                </p>
-                <p className="text-xs text-muted-foreground">{roleLabel}</p>
-              </div>
-              <UserAvatar name={user.name} />
-              {hasBottomNav && (
-                <div className="md:hidden">
-                  <LogoutButton iconOnly />
-                </div>
-              )}
+            <div className="ml-auto flex items-center">
+              <UserMenu
+                user={user}
+                roleLabel={roleLabel}
+                profileHref={`${homeHref}/profile`}
+              />
             </div>
           </div>
         </header>

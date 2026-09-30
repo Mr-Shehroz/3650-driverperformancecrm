@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Segmented } from "@/components/driver/form-bits";
 import { updateJobAction } from "@/app/(admin)/admin/actions";
 import type { Job } from "@/types";
+import { toast } from "sonner";
 
 type Tri = "yes" | "no" | "unknown";
 const toTri = (v: boolean | null): Tri =>
@@ -38,11 +39,8 @@ export function JobStatusForm({ job }: { job: Job }) {
         onTimePickup: toBool(pickup),
         onTimeDelivery: toBool(delivery),
       });
-      if (res?.error) alert(res.error);
-      else {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      }
+      if (res?.error) toast.error(res.error);
+      else toast.success("Job status saved");
     });
 
   return (

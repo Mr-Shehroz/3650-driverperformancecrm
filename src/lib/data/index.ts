@@ -1,6 +1,8 @@
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import * as db from "@/lib/mock/data";
+import { MOCK_PASSWORD } from "@/lib/mock/data";
 import type {
+  AppSettings,
   AuditEntry,
   DamageIncident,
   DateRange,
@@ -10,16 +12,17 @@ import type {
   JobSummary,
   Lead,
   LeadCost,
+  LeadSource,
   MonthlyPoint,
   PreDamage,
   RecordKind,
   RepMetrics,
   Review,
-  Upsell,
-  User,
-  LeadSource,
+  Role,
   SalesMonthlyPoint,
   SourceBreakdownRow,
+  Upsell,
+  User,
 } from "@/types";
 
 const inRange = (date: string, r?: DateRange) =>
@@ -619,4 +622,85 @@ export async function restoreRecord(
     after: { deleted: false },
   });
   return rec;
+}
+
+/* ---------- Users management ---------- */
+export async function emailExists(
+  email: string,
+  excludeId?: string,
+): Promise<boolean> {
+  const e = email.trim().toLowerCase();
+  return db.users.some(
+    (u) => u.email.toLowerCase() === e && u.id !== excludeId,
+  );
+}
+
+export async function createUser(
+  input: { name: string; email: string; phone?: string; role: Role },
+  password: string,
+): Promise<User> {
+  const prefix =
+    input.role === "admin" ? "a" : input.role === "driver" ? "d" : "r";
+  const user: User = {
+    id: `${prefix}-${crypto.randomUUID().slice(0, 8)}`,
+    name: input.name,
+    email: input.email.toLowerCase(),
+    phone: input.phone || undefined,
+    role: input.role,
+    active: true,
+  };
+  db.users.push(user);
+  db.passwords[user.id] = password;
+  return user;
+}
+
+export async function updateUser(
+  id: string,
+  patch: Partial<Pick<User, "name" | "email" | "phone" | "role">>,
+): Promise<User | null> {
+  const user = db.users.find((u) => u.id === id);
+  if (!user) return null;
+  Object.assign(user, {
+    ...patch,
+    email: patch.email ? patch.email.toLowerCase() : user.email,
+    phone: patch.phone === "" ? undefined : (patch.phone ?? user.phone),
+  });
+  return user;
+}
+
+export async function setUserActive(
+  id: string,
+  active: boolean,
+): Promise<User | null> {
+  const user = db.users.find((u) => u.id === id);
+  if (!user) return null;
+  user.active = active;
+  return user;
+}
+
+export async function setUserPassword(
+  id: string,
+  password: string,
+): Promise<boolean> {
+  if (!db.users.some((u) => u.id === id)) return false;
+  db.passwords[id] = password;
+  return true;
+}
+
+export async function verifyPassword(
+  userId: string,
+  password: string,
+): Promise<boolean> {
+  return (db.passwords[userId] ?? MOCK_PASSWORD) === password;
+}
+
+/* ---------- Settings ---------- */
+export async function getSettings(): Promise<AppSettings> {
+  return db.settings;
+}
+
+export async function updateSettings(next: AppSettings): Promise<AppSettings> {
+  db.settings.company = { ...next.company };
+  db.settings.damageAlertEmails = [...next.damageAlertEmails];
+  return db.settings;
 }

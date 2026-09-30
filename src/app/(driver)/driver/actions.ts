@@ -13,6 +13,7 @@ import {
   getDrivers,
   getJobDetail,
   jobNumberExists,
+  updateJob,
 } from "@/lib/data";
 import { MAX_PHOTOS } from "@/lib/constants";
 
@@ -240,4 +241,32 @@ export async function createUpsellAction(
 
   revalidatePath(`/driver/jobs/${job.id}`);
   redirect(`/driver/jobs/${job.id}`);
+}
+
+/* ---------- On-time status ---------- */
+const onTimeSchema = z.object({
+  jobId: z.string().min(1),
+  field: z.enum(["pickup", "delivery"]),
+  value: z.boolean(),
+});
+
+export async function setOnTimeAction(
+  input: z.infer<typeof onTimeSchema>,
+): Promise<ActionResult> {
+  const user = await requireRole("driver");
+  const parsed = onTimeSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid request." };
+
+  const job = await getOwnJob(parsed.data.jobId, user.id);
+  if (!job) return { error: "Job not found." };
+
+  const key =
+    parsed.data.field === "pickup" ? "onTimePickup" : "onTimeDelivery";
+  // Drivers can record it once. After that only an admin can change it.
+  if (job[key] !== null)
+    return { error: "Already recorded. Ask an admin if it needs changing." };
+
+  await updateJob(job.id, { [key]: parsed.data.value }, user.id);
+  revalidatePath(`/driver/jobs/${job.id}`);
+  revalidatePath("/driver", "layout");
 }
