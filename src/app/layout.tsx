@@ -16,7 +16,7 @@ const barlow = Barlow({
   variable: "--font-barlow",
   display: "swap",
 });
-
+// metadata 
 export const metadata: Metadata = {
   title: { default: "DRS Performance Portal", template: "%s · DRS Portal" },
   description:
