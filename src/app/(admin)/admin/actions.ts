@@ -18,8 +18,8 @@ import {
   updateUser,
   upsertLeadCost,
 } from "@/lib/data";
-import { generateTempPassword } from "@/lib/password";
 import type { LeadSource, RecordKind } from "@/types";
+import { passwordRule } from "@/lib/validation/password";
 
 export type AdminResult = {
   error?: string;
@@ -29,6 +29,7 @@ export type AdminResult = {
 function revalidateJob(jobId: string) {
   revalidatePath(`/admin/jobs/${jobId}`);
   revalidatePath(`/driver/jobs/${jobId}`);
+  revalidatePath("/admin/users");
   revalidatePath("/admin", "layout");
 }
 
@@ -183,33 +184,40 @@ export async function overrideLeadCostAction(
 }
 
 /* ---------- Users ---------- */
-const userSchema = z.object({
+const userBase = z.object({
   name: z.string().trim().min(2, "Enter the full name").max(80),
   email: z.string().trim().email("Enter a valid email"),
   phone: z.string().trim().max(30).optional().or(z.literal("")),
   role: z.enum(["admin", "driver", "sales_rep"], { message: "Select a role" }),
 });
 
-export type UserInput = z.infer<typeof userSchema>;
+const createUserSchema = userBase.extend({ password: passwordRule });
+const updateUserSchema = userBase.extend({
+  password: passwordRule.optional().or(z.literal("")),
+});
+
+export type UserInput = z.infer<typeof updateUserSchema>;
 
 export async function createUserAction(
   input: UserInput,
-): Promise<{
-  fieldErrors?: Record<string, string>;
-  error?: string;
-  tempPassword?: string;
-}> {
+): Promise<{ fieldErrors?: Record<string, string>; error?: string }> {
   await requireRole("admin");
-  const parsed = userSchema.safeParse(input);
+  const parsed = createUserSchema.safeParse(input);
   if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
   if (await emailExists(parsed.data.email)) {
     return { fieldErrors: { email: "A user with this email already exists" } };
   }
 
-  const tempPassword = generateTempPassword();
-  await createUser(parsed.data, tempPassword);
+  const { password, ...profile } = parsed.data;
+  try {
+    await createUser(profile, password);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Couldn't create the user.",
+    };
+  }
   revalidatePath("/admin", "layout");
-  return { tempPassword };
+  return {};
 }
 
 export async function updateUserAction(
@@ -217,7 +225,7 @@ export async function updateUserAction(
   input: UserInput,
 ): Promise<AdminResult> {
   const admin = await requireRole("admin");
-  const parsed = userSchema.safeParse(input);
+  const parsed = updateUserSchema.safeParse(input);
   if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
   if (await emailExists(parsed.data.email, id)) {
     return { fieldErrors: { email: "A user with this email already exists" } };
@@ -226,8 +234,22 @@ export async function updateUserAction(
     return { fieldErrors: { role: "You can't change your own role" } };
   }
 
-  const user = await updateUser(id, parsed.data);
-  if (!user) return { error: "User not found." };
+  const { password, ...profile } = parsed.data;
+  try {
+    const user = await updateUser(id, profile);
+    if (!user) return { error: "User not found." };
+    if (password) {
+      const ok = await setUserPassword(id, password);
+      if (!ok)
+        return {
+          error: "Details saved, but the new password couldn't be set.",
+        };
+    }
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Couldn't update the user.",
+    };
+  }
   revalidatePath("/admin", "layout");
 }
 
@@ -238,19 +260,33 @@ export async function setUserActiveAction(
   const admin = await requireRole("admin");
   if (id === admin.id && !active)
     return { error: "You can't deactivate your own account." };
-  const user = await setUserActive(id, active);
-  if (!user) return { error: "User not found." };
+
+  try {
+    const user = await setUserActive(id, active);
+    if (!user) return { error: "User not found." };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Couldn't update the user.",
+    };
+  }
   revalidatePath("/admin", "layout");
 }
 
-export async function resetPasswordAction(
+export async function setPasswordAction(
   id: string,
-): Promise<{ error?: string; tempPassword?: string }> {
+  password: string,
+): Promise<AdminResult> {
   await requireRole("admin");
-  const tempPassword = generateTempPassword();
-  const ok = await setUserPassword(id, tempPassword);
-  if (!ok) return { error: "User not found." };
-  return { tempPassword };
+  const parsed = passwordRule.safeParse(password);
+  if (!parsed.success)
+    return {
+      fieldErrors: {
+        password: parsed.error.issues[0]?.message ?? "Invalid password",
+      },
+    };
+
+  const ok = await setUserPassword(id, parsed.data);
+  if (!ok) return { error: "Couldn't set the password. Please try again." };
 }
 
 /* ---------- Settings ---------- */

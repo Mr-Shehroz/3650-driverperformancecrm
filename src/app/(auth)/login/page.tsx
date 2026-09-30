@@ -16,12 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type LoginState } from "./actions";
 
-const DEMO = [
-  { label: "Admin", email: "justin@drs.test" },
-  { label: "Driver", email: "carlos@drs.test" },
-  { label: "Sales Rep", email: "ashley@drs.test" },
-];
-
 const FEATURES = [
   {
     icon: Camera,
@@ -63,8 +57,6 @@ export default function LoginPage() {
     loginAction,
     undefined,
   );
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -135,7 +127,9 @@ export default function LoginPage() {
                 <h2 className="text-3xl font-bold sm:text-[38px] md:text-[32px] lg:text-[38px]">
                   Sign in
                 </h2>
-                <p className="mt-2 text-base text-muted-foreground"></p>
+                <p className="mt-2 text-base text-muted-foreground">
+                  Use the email and password provided by your admin.
+                </p>
 
                 <form action={action} className="mt-10 space-y-6">
                   <div className="space-y-2">
@@ -152,8 +146,6 @@ export default function LoginPage() {
                       autoComplete="email"
                       inputMode="email"
                       required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@directrelocate.com"
                       className="h-12 rounded-lg bg-muted/40 px-4 text-base focus-visible:bg-white"
                     />
@@ -173,8 +165,6 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
                         required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
                         className="h-12 rounded-lg bg-muted/40 px-4 pr-12 text-base focus-visible:bg-white"
                       />
@@ -196,7 +186,10 @@ export default function LoginPage() {
                   </div>
 
                   {state?.error && (
-                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700"
+                    >
                       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                       {state.error}
                     </div>
@@ -220,29 +213,6 @@ export default function LoginPage() {
                     Forgot your password? Contact your admin.
                   </p>
                 </form>
-
-                {process.env.NODE_ENV !== "production" && (
-                  <div className="mt-8 rounded-xl bg-muted/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Demo accounts
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {DEMO.map((d) => (
-                        <button
-                          key={d.email}
-                          type="button"
-                          onClick={() => {
-                            setEmail(d.email);
-                            setPassword("demo1234");
-                          }}
-                          className="rounded-full border bg-white px-3 py-1.5 text-sm font-medium transition hover:border-primary hover:text-primary"
-                        >
-                          {d.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

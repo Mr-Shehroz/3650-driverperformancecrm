@@ -7,6 +7,7 @@ export interface User {
   phone?: string;
   role: Role;
   active: boolean;
+  avatarUrl?: string;
 }
 
 export type DeliveredBy = "drs" | "partner";

@@ -2,13 +2,17 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@source "../";
+
+@source inline("h-28 h-44 w-44 -mt-16 -top-16 -right-10 bottom-1 right-1 ring-4 ring-[6px] ring-card ring-primary/15 border-[3px] border-card bg-primary/35 blur-3xl opacity-0 group-hover:opacity-100 divide-y grid-cols-1 grid-cols-2 sm:text-2xl focus-visible:ring-primary lg:sticky lg:top-24 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-8");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
   --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-barlow);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -128,14 +132,25 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply font-sans;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     -webkit-tap-highlight-color: transparent;
   }
-  html {
-    @apply font-sans;
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading tracking-tight;
   }
-  /* iOS Safari input focus par zoom na kare */
+  button:not(:disabled),
+  a,
+  [role="button"] {
+    cursor: pointer;
+  }
+  /* iOS Safari: don't zoom when an input is focused */
   input,
   select,
   textarea {

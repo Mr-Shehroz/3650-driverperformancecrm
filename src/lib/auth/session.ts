@@ -1,20 +1,41 @@
-import { cookies } from "next/headers";
+import { cache } from "react";
 import { redirect } from "next/navigation";
-import { getUserById } from "@/lib/data";
-import { SESSION_COOKIE } from "./roles";
-import type { Role } from "@/types";
+import { createClient } from "@/lib/supabase/server";
+import type { Role, User } from "@/types";
+import { homeFor } from "./roles";
 
-export async function getSession() {
-  const id = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!id) return null;
-  const user = await getUserById(id);
-  return user && user.active ? user : null;
-}
+/** Logged-in user with their profile. Cached for the length of one request. */
+export const getSession = cache(async (): Promise<User | null> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, name, email, phone, role, active, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile || !profile.active) return null;
+
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    phone: profile.phone ?? undefined,
+    role: profile.role,
+    active: profile.active,
+    avatarUrl: profile.avatar_url ?? undefined,
+  };
+});
 
 export async function requireRole(role: Role) {
   const user = await getSession();
   if (!user) redirect("/login");
-  if (user.role !== role) redirect("/");
+  // Send them to their own portal (never to "/", which could loop)
+  if (user.role !== role) redirect(homeFor(user.role));
   return user;
 }
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FormSection } from "@/components/driver/form-bits";
 import { changePasswordAction } from "@/app/actions/account";
 import { cn } from "@/lib/utils";
+import { PASSWORD_RULES } from "@/lib/validation/password";
 
 const EMPTY = { current: "", next: "", confirm: "" };
 
@@ -58,11 +59,10 @@ export function PasswordForm() {
     if (errors[k]) setErrors((er) => ({ ...er, [k]: "" }));
   };
 
-  const rules = [
-    { ok: v.next.length >= 8, label: "At least 8 characters" },
-    { ok: /[A-Za-z]/.test(v.next), label: "A letter" },
-    { ok: /[0-9]/.test(v.next), label: "A number" },
-  ];
+  const rules = PASSWORD_RULES.map((r) => ({
+    ok: r.test(v.next),
+    label: r.label,
+  }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

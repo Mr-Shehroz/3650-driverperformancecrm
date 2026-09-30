@@ -57,7 +57,11 @@ export function UserMenu({
           </p>
           <p className="text-xs text-muted-foreground">{roleLabel}</p>
         </div>
-        <UserAvatar name={user.name} />
+        <UserAvatar
+          name={user.name}
+          src={user.avatarUrl}
+          className="h-11 w-11"
+        />
         <ChevronDown
           className={cn(
             "hidden h-4 w-4 text-muted-foreground transition sm:block",
@@ -72,7 +76,11 @@ export function UserMenu({
           className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border bg-white shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="flex items-center gap-3 border-b px-4 py-4">
-            <UserAvatar name={user.name} className="h-11 w-11" />
+            <UserAvatar
+              name={user.name}
+              src={user.avatarUrl}
+              className="h-11 w-11"
+            />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
               <p className="truncate text-sm text-muted-foreground">

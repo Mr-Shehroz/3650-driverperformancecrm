@@ -1,0 +1,93 @@
+.box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.box:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.dragging {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.avatarBtn {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 4px #fff, 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.avatarBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--primary);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.avatarBtn:hover .overlay,
+.overlayVisible {
+  opacity: 1;
+}
+
+.badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fff;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.info {
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.hint {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

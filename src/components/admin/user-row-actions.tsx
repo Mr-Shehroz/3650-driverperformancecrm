@@ -3,19 +3,97 @@
 import { useState, useTransition } from "react";
 import { KeyRound, Loader2, Pencil, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/shared/modal";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { PasswordReveal } from "./password-reveal";
+import { PasswordField } from "./password-field";
 import { UserDialog } from "./user-dialog";
 import {
-  resetPasswordAction,
+  setPasswordAction,
   setUserActiveAction,
 } from "@/app/(admin)/admin/actions";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
+import { useRouter } from "next/navigation";
 
 const btn =
   "flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-sm font-semibold transition disabled:opacity-50";
+
+function SetPasswordDialog({
+  user,
+  open,
+  onClose,
+}: {
+  user: User;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string>();
+  const [pending, startTransition] = useTransition();
+
+  const close = () => {
+    setPassword("");
+    setError(undefined);
+    onClose();
+  };
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await setPasswordAction(user.id, password);
+      if (res?.fieldErrors?.password) setError(res.fieldErrors.password);
+      else if (res?.error) toast.error(res.error);
+      else {
+        toast.success(`New password saved for ${user.name}`);
+        close();
+      }
+    });
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title="Set password"
+      description={`${user.name} · ${user.email}`}
+    >
+      <form onSubmit={save} className="space-y-5" noValidate>
+        <PasswordField
+          id={`pw-${user.id}`}
+          label="New password"
+          value={password}
+          onChange={(v) => {
+            setPassword(v);
+            if (error) setError(undefined);
+          }}
+          error={error}
+          hint="Type a password or tap Generate. Their old password stops working right away."
+        />
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={close}
+            className="h-12 rounded-lg px-6 font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <Button
+            type="submit"
+            disabled={pending || !password}
+            className="h-12 px-8 font-semibold"
+          >
+            {pending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              "Save password"
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
 
 export function UserRowActions({
   user,
@@ -25,19 +103,11 @@ export function UserRowActions({
   currentUserId: string;
 }) {
   const [editOpen, setEditOpen] = useState(false);
-  const [confirm, setConfirm] = useState<"reset" | "deactivate" | null>(null);
-  const [tempPassword, setTempPassword] = useState<string>();
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const isSelf = user.id === currentUserId;
-
-  const doReset = async () => {
-    const res = await resetPasswordAction(user.id);
-    if (res.error) {
-      toast.error(res.error);
-      return false;
-    }
-    setTempPassword(res.tempPassword);
-  };
 
   const doDeactivate = async () => {
     const res = await setUserActiveAction(user.id, false);
@@ -46,13 +116,17 @@ export function UserRowActions({
       return false;
     }
     toast.success(`${user.name} was deactivated.`);
+    router.refresh();
   };
 
   const activate = () =>
     startTransition(async () => {
       const res = await setUserActiveAction(user.id, true);
       if (res?.error) toast.error(res.error);
-      else toast.success(`${user.name} is active again.`);
+      else {
+        toast.success(`${user.name} is active again.`);
+        router.refresh();
+      }
     });
 
   return (
@@ -68,19 +142,19 @@ export function UserRowActions({
 
       <button
         type="button"
-        onClick={() => setConfirm("reset")}
+        onClick={() => setPasswordOpen(true)}
         className={cn(btn, "hover:border-foreground/30")}
-        title="Reset password"
+        title="Set password"
       >
         <KeyRound className="h-4 w-4" />{" "}
-        <span className="hidden xl:inline">Reset password</span>
+        <span className="hidden xl:inline">Set password</span>
       </button>
 
       {!isSelf &&
         (user.active ? (
           <button
             type="button"
-            onClick={() => setConfirm("deactivate")}
+            onClick={() => setConfirmDeactivate(true)}
             className={cn(
               btn,
               "text-muted-foreground hover:border-red-200 hover:bg-red-50 hover:text-red-700",
@@ -117,39 +191,21 @@ export function UserRowActions({
         currentUserId={currentUserId}
       />
 
-      <ConfirmDialog
-        open={confirm === "reset"}
-        onClose={() => setConfirm(null)}
-        title="Reset password?"
-        description={`A new temporary password will be created for ${user.name}. Their current password will stop working.`}
-        confirmLabel="Reset password"
-        onConfirm={doReset}
+      <SetPasswordDialog
+        user={user}
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
       />
 
       <ConfirmDialog
-        open={confirm === "deactivate"}
-        onClose={() => setConfirm(null)}
+        open={confirmDeactivate}
+        onClose={() => setConfirmDeactivate(false)}
         title={`Deactivate ${user.name}?`}
         description="They won't be able to log in. All their jobs, records and stats are kept, and you can reactivate them any time."
         tone="danger"
         confirmLabel="Deactivate"
         onConfirm={doDeactivate}
       />
-
-      <Modal
-        open={!!tempPassword}
-        onClose={() => setTempPassword(undefined)}
-        title="Password reset"
-      >
-        {tempPassword && (
-          <PasswordReveal
-            name={user.name}
-            email={user.email}
-            password={tempPassword}
-            onDone={() => setTempPassword(undefined)}
-          />
-        )}
-      </Modal>
     </div>
   );
 }

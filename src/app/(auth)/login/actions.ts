@@ -1,9 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getUserByEmail, verifyPassword } from "@/lib/data";
-import { SESSION_COOKIE, homeFor } from "@/lib/auth/roles";
+import { createClient } from "@/lib/supabase/server";
+import { homeFor } from "@/lib/auth/roles";
 
 export type LoginState = { error?: string } | undefined;
 
@@ -11,30 +10,41 @@ export async function loginAction(
   _prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) return { error: "Enter your email and password." };
 
-  const user = await getUserByEmail(email);
-  if (!user || !(await verifyPassword(user.id, password))) {
-    return { error: "Invalid email or password." };
-  }
-  if (!user.active)
-    return { error: "Your account is deactivated. Contact admin." };
-
-  (await cookies()).set(SESSION_COOKIE, user.id, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
   });
 
-  redirect(homeFor(user.role));
+  if (error || !data.user) {
+    if (error?.code === "user_banned")
+      return { error: "Your account is deactivated. Contact admin." };
+    return { error: "Invalid email or password." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, active")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (!profile || !profile.active) {
+    await supabase.auth.signOut();
+    return { error: "Your account is deactivated. Contact admin." };
+  }
+
+  redirect(homeFor(profile.role));
 }
 
 export async function logoutAction() {
-  (await cookies()).delete(SESSION_COOKIE);
+  const supabase = await createClient();
+  await supabase.auth.signOut();
   redirect("/login");
 }

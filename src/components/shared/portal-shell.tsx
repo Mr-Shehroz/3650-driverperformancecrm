@@ -170,7 +170,11 @@ function SidebarContent({
               rail ? "justify-center p-1" : "flex-1 gap-3 px-2 py-2",
             )}
           >
-            <UserAvatar name={user.name} />
+            <UserAvatar
+              name={user.name}
+              src={user.avatarUrl}
+              className="h-11 w-11"
+            />
             {!rail && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-white">
