@@ -15,6 +15,11 @@ export default async function NewReviewPage({
       job={job}
       title="Add review"
       description="A customer review for this job."
+      tips={[
+        "Paste the review link, or add a screenshot if there's no link.",
+        "Mark whether the customer mentioned you by name.",
+        "Admins verify reviews before they count on verified leaderboards.",
+      ]}
     >
       <ReviewForm jobId={job.id} />
     </DriverFormPage>

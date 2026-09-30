@@ -704,3 +704,17 @@ export async function updateSettings(next: AppSettings): Promise<AppSettings> {
   db.settings.damageAlertEmails = [...next.damageAlertEmails];
   return db.settings;
 }
+
+/* ---------- Offline sync receipts ---------- */
+export async function getSyncReceipt(
+  clientId: string,
+): Promise<{ id: string } | null> {
+  return db.syncReceipts[clientId] ?? null;
+}
+
+export async function saveSyncReceipt(
+  clientId: string,
+  result: { id: string },
+): Promise<void> {
+  db.syncReceipts[clientId] = result;
+}

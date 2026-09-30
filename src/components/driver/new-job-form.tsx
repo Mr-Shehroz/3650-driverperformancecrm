@@ -16,6 +16,10 @@ import {
 import { US_STATES } from "@/lib/constants";
 import { createJobAction } from "@/app/(driver)/driver/actions";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
+import { newLocalId } from "@/lib/offline/queue";
+import { jobSchema } from "@/lib/validation/driver";
 
 type Tri = "yes" | "no" | "unknown";
 const toBool = (t: Tri) => (t === "unknown" ? null : t === "yes");
@@ -64,13 +68,30 @@ export function NewJobForm({ currentUserId, drivers }: Props) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    const payload = {
+      ...values,
+      crewIds: crew,
+      deliveredBy,
+      onTimePickup: toBool(pickup),
+      onTimeDelivery: toBool(delivery),
+    };
+    const localId = newLocalId();
+
     startTransition(async () => {
-      const res = await createJobAction({
-        ...values,
-        crewIds: crew,
-        deliveredBy,
-        onTimePickup: toBool(pickup),
-        onTimeDelivery: toBool(delivery),
+      const res = await submitOrQueue({
+        type: "job",
+        schema: jobSchema,
+        payload,
+        localId,
+        jobRef: localId,
+        label: `Job ${payload.jobNumber}`,
+        online: (data) => createJobAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Job saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath(`/driver/jobs/${localId}`);
+        },
       });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);

@@ -5,7 +5,8 @@ import { getDriverJobSummaries } from "@/lib/data";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JobCard } from "@/components/driver/job-card";
-import { Button } from "@/components/ui/button";
+
+export const metadata = { title: "Job History" };
 
 export default async function DriverJobsPage({
   searchParams,
@@ -22,15 +23,16 @@ export default async function DriverJobsPage({
         title="Job History"
         description={`${jobs.length} job${jobs.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
         actions={
-          <Link href="/driver/jobs/new" className="hidden sm:block">
-            <Button className="h-11 px-5 font-semibold">
-              <PlusCircle className="mr-1 h-4 w-4" /> New Job
-            </Button>
+          <Link
+            href="/driver/jobs/new"
+            className="hidden h-11 items-center gap-1.5 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary/90 sm:flex"
+          >
+            <PlusCircle className="h-4 w-4" /> New Job
           </Link>
         }
       />
 
-      <form className="relative mb-5">
+      <form className="relative mb-5 max-w-xl">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <input
           name="q"
@@ -49,21 +51,23 @@ export default async function DriverJobsPage({
         )}
       </form>
 
-      <div className="space-y-3">
-        {jobs.length ? (
-          jobs.map((job) => <JobCard key={job.id} job={job} />)
-        ) : (
-          <EmptyState
-            icon={ClipboardList}
-            title={q ? "No matching jobs" : "No jobs yet"}
-            description={
-              q
-                ? "Try a different job number or city."
-                : "Start your first job to see it here."
-            }
-          />
-        )}
-      </div>
+      {jobs.length ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={ClipboardList}
+          title={q ? "No matching jobs" : "No jobs yet"}
+          description={
+            q
+              ? "Try a different job number or city."
+              : "Start your first job to see it here."
+          }
+        />
+      )}
     </div>
   );
 }

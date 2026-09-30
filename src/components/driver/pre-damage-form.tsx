@@ -11,6 +11,9 @@ import { SignatureField } from "./signature-field";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { createPreDamageAction } from "@/app/(driver)/driver/actions";
 import { cn } from "@/lib/utils";
+import { preDamageSchema } from "@/lib/validation/driver";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
+import { toast } from "sonner";
 
 const TEXTAREA =
   "min-h-[96px] w-full rounded-lg border border-input bg-white px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 aria-[invalid=true]:border-destructive";
@@ -36,20 +39,35 @@ export function PreDamageForm({ jobId }: { jobId: string }) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    const payload = {
+      jobId,
+      item,
+      location,
+      description,
+      notes,
+      photos,
+      customerShown,
+      customerName,
+      signature: signature ?? "",
+      capturedAtDevice: new Date().toISOString(),
+      lat: geo.lat,
+      lng: geo.lng,
+    };
+
     startTransition(async () => {
-      const res = await createPreDamageAction({
-        jobId,
-        item,
-        location,
-        description,
-        notes,
-        photos,
-        customerShown,
-        customerName,
-        signature: signature ?? "",
-        capturedAtDevice: new Date().toISOString(),
-        lat: geo.lat,
-        lng: geo.lng,
+      const res = await submitOrQueue({
+        type: "pre_damage",
+        schema: preDamageSchema,
+        payload,
+        jobRef: jobId,
+        label: `Pre-existing damage: ${item || "item"}`,
+        online: (data) => createPreDamageAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath(`/driver/jobs/${jobId}`);
+        },
       });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);

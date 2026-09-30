@@ -1,9 +1,7 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { requireRole } from "@/lib/auth/session";
-import { getJobDetail } from "@/lib/data";
-import { PageHeader } from "@/components/shared/page-header";
+import {
+  DriverFormPage,
+  getDriverOwnedJob,
+} from "@/components/driver/form-page";
 import { PreDamageForm } from "@/components/driver/pre-damage-form";
 
 export default async function NewPreDamagePage({
@@ -11,24 +9,20 @@ export default async function NewPreDamagePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireRole("driver");
-  const { id } = await params;
-  const job = await getJobDetail(id);
-  if (!job || job.driverId !== user.id) notFound();
-
+  const job = await getDriverOwnedJob((await params).id);
   return (
-    <div>
-      <Link
-        href={`/driver/jobs/${job.id}`}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> {job.jobNumber}
-      </Link>
-      <PageHeader
-        title="Pre-existing damage"
-        description="Record damage found at pickup, before loading."
-      />
+    <DriverFormPage
+      job={job}
+      title="Pre-existing damage"
+      description="Record damage found at pickup, before loading."
+      tips={[
+        "Take photos before anything is moved or wrapped.",
+        "Show the customer each damaged spot, then get their printed name and signature.",
+        "Your location and the time are recorded automatically.",
+        "Once saved, the record is locked. Only an admin can correct it, and every change is logged.",
+      ]}
+    >
       <PreDamageForm jobId={job.id} />
-    </div>
+    </DriverFormPage>
   );
 }

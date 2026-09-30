@@ -11,6 +11,7 @@ import { getActiveHref, type NavGroup, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
 import { UserMenu } from "@/components/shared/user-menu";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 
 /* ---------- Sidebar preference store (localStorage) ---------- */
 const STORAGE_KEY = "drs_sidebar_collapsed";
@@ -56,6 +57,7 @@ type Props = {
   /** Max width of the page content */
   contentClassName?: string;
   children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 };
 
 function SidebarContent({
@@ -193,6 +195,7 @@ export function PortalShell({
   bottomNav,
   contentClassName = "",
   children,
+  headerExtra,
 }: Props) {
   const pathname = usePathname();
   const allHrefs = navGroups.flatMap((g) => g.items.map((i) => i.href));
@@ -334,7 +337,8 @@ export function PortalShell({
               />
             </Link>
 
-            <div className="ml-auto flex items-center">
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              {headerExtra}
               <UserMenu
                 user={user}
                 roleLabel={roleLabel}
@@ -342,6 +346,7 @@ export function PortalShell({
               />
             </div>
           </div>
+          <OfflineBanner />
         </header>
 
         <main

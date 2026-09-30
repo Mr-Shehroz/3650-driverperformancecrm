@@ -15,6 +15,11 @@ export default async function NewUpsellPage({
       job={job}
       title="Add upsell"
       description="Extra services sold on this job."
+      tips={[
+        "Enter the total amount charged to the customer for this service.",
+        "Add each service separately, e.g. packing and storage as two upsells.",
+        "Admins verify upsells before they count on verified leaderboards.",
+      ]}
     >
       <UpsellForm jobId={job.id} />
     </DriverFormPage>

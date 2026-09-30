@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getJobDetail } from "@/lib/data";
 import { PageHeader } from "@/components/shared/page-header";
+import { DriverFormLayout } from "./form-layout";
 import type { JobDetail } from "@/types";
 
 export async function getDriverOwnedJob(id: string): Promise<JobDetail> {
@@ -17,11 +18,13 @@ export function DriverFormPage({
   job,
   title,
   description,
+  tips,
   children,
 }: {
   job: JobDetail;
   title: string;
   description?: string;
+  tips: string[];
   children: React.ReactNode;
 }) {
   return (
@@ -33,7 +36,7 @@ export function DriverFormPage({
         <ArrowLeft className="h-4 w-4" /> {job.jobNumber}
       </Link>
       <PageHeader title={title} description={description} />
-      {children}
+      <DriverFormLayout tips={tips}>{children}</DriverFormLayout>
     </div>
   );
 }

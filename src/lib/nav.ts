@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ListChecks,
   PlusCircle,
+  RefreshCw,
   ScrollText,
   Settings,
   TrendingUp,
@@ -77,6 +78,7 @@ export const DRIVER_NAV_GROUPS: NavGroup[] = [
       { href: "/driver", label: "Home", icon: Home },
       { href: "/driver/jobs/new", label: "New Job", icon: PlusCircle },
       { href: "/driver/jobs", label: "Job History", icon: History },
+      { href: "/driver/outbox", label: "Sync queue", icon: RefreshCw },
     ],
   },
   {
