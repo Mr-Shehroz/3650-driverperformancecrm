@@ -1,5 +1,5 @@
 /* DRS Performance Portal service worker */
-const VERSION = "drs-v2";
+const VERSION = "drs-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const SHELL_CACHE = `${VERSION}-shell`;

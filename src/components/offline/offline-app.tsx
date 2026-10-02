@@ -796,7 +796,7 @@ export function OfflineApp() {
             aria-label="Offline home"
             className="min-w-0 shrink-0"
           >
-            <Brand compact textClassName="hidden min-[400px]:block" />
+            <Brand compact />
           </a>
 
           <nav className="ml-2 hidden items-center gap-1 md:flex lg:ml-6">

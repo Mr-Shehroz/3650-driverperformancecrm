@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type LoginState } from "./actions";
+import { Brand } from "@/components/shared/brand";
 
 const FEATURES = [
   {
@@ -33,24 +34,6 @@ const FEATURES = [
     text: "Drivers and sales reps measured in one place.",
   },
 ];
-
-function Brand() {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center bg-primary font-heading text-base font-extrabold tracking-wide text-white [clip-path:polygon(0_0,100%_0,100%_72%,72%_100%,0_100%)]">
-        DRS
-      </div>
-      <div className="leading-none">
-        <p className="font-heading text-lg font-bold tracking-wide text-white">
-          DIRECT RELOCATION
-        </p>
-        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/55">
-          Services
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<LoginState, FormData>(

@@ -65,7 +65,7 @@ export async function RepPerformance({
         />
       </div>
 
-      <div className="grid gap-6 2xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2 [&>*]:min-w-0">
         <SourceBreakdown rows={breakdown} />
         <MetricChart
           title="Monthly trend"

@@ -46,7 +46,7 @@ export function MetricChart({
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           )}
         </div>
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 sm:pb-0">
+        <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
           {metrics.map((x) => (
             <button
               key={x.key}

@@ -167,3 +167,13 @@ button, a {
   h1, h2, h3, h4 {
     @apply font-heading tracking-tight;
   }
+
+
+  /* Horizontal scroll areas without a visible scrollbar (filters, tabs) */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
