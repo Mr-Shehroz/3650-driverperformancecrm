@@ -37,7 +37,7 @@ export function ParamPills({
           {label}
         </span>
       )}
-      <div className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1">
+      <div className="no-scrollbar -mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1">
         {all.map((o) => (
           <button
             key={o.value || "all"}

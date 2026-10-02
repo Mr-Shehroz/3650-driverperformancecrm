@@ -28,7 +28,7 @@ export function FilterBar({ showVerified = true }: { showVerified?: boolean }) {
 
   return (
     <div className="mb-6 flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:p-4 xl:flex-row xl:items-center xl:justify-between">
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1">
+      <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
         {PERIOD_OPTIONS.map((p) => (
           <button
             key={p.key}

@@ -85,7 +85,7 @@ function SidebarContent({
         )}
       >
         <Link href={homeHref} aria-label="Home">
-          <Brand compact textClassName={rail ? "hidden" : undefined} />
+          {rail ? <Brand iconOnly /> : <Brand compact />}
         </Link>
         {onClose && (
           <button
@@ -252,7 +252,7 @@ export function PortalShell({
   }, []);
 
   return (
-    <div className="min-h-dvh bg-muted/40">
+    <div className="min-h-dvh overflow-x-clip bg-muted/40">
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -291,6 +291,7 @@ export function PortalShell({
 
       <div
         className={cn(
+          "min-w-0",
           collapsed ? "lg:pl-[88px]" : "lg:pl-[272px]",
           ready && "transition-[padding] duration-200 ease-out",
         )}
@@ -329,18 +330,6 @@ export function PortalShell({
               )}
             </button>
 
-            <Link
-              href={homeHref}
-              className="min-w-0 lg:hidden"
-              aria-label="Home"
-            >
-              <Brand
-                tone="light"
-                compact
-                textClassName="hidden min-[400px]:block"
-              />
-            </Link>
-
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
               {headerExtra}
               <UserMenu
@@ -355,7 +344,7 @@ export function PortalShell({
 
         <main
           className={cn(
-            "mx-auto w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8",
+            "min-w-0 mx-auto w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8",
             hasBottomNav &&
               "pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-8",
             contentClassName,
