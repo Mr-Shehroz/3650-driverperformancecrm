@@ -31,7 +31,7 @@ export function TrendChart({ data }: { data: MonthlyPoint[] }) {
   const current = METRICS.find((m) => m.key === metric)!;
 
   return (
-    <div className="rounded-2xl border bg-card p-4 sm:p-6">
+    <div className="w-full min-w-0 rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-bold">Monthly trend</h2>
@@ -39,7 +39,7 @@ export function TrendChart({ data }: { data: MonthlyPoint[] }) {
             Last {data.length} months
           </p>
         </div>
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 sm:pb-0">
+        <div className="no-scrollbar -mx-1 flex min-w-0 gap-1 overflow-x-auto px-1">
           {METRICS.map((m) => (
             <button
               key={m.key}
