@@ -9,7 +9,7 @@ export function SourceBreakdown({
   title?: string;
 }) {
   return (
-    <div className="rounded-2xl border bg-card">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border bg-card">
       <div className="border-b px-4 py-3.5 sm:px-5">
         <h2 className="text-lg font-bold">{title}</h2>
       </div>

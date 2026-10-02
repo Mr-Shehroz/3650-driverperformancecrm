@@ -38,15 +38,15 @@ export function MetricChart({
   const m = metrics.find((x) => x.key === active)!;
 
   return (
-    <div className="rounded-2xl border bg-card p-4 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full min-w-0 rounded-2xl border bg-card p-4 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <div>
           <h2 className="text-lg font-bold">{title}</h2>
           {subtitle && (
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           )}
         </div>
-        <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
+        <div className="no-scrollbar -mx-1 flex min-w-0 gap-1 overflow-x-auto px-1">
           {metrics.map((x) => (
             <button
               key={x.key}
