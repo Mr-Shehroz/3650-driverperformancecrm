@@ -5,17 +5,19 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  History,
   Info,
   Pencil,
   Users,
 } from "lucide-react";
-import { requireRole } from "@/lib/auth/session";
 import {
   countLeadsBySource,
+  getEffectiveCosts,
   getLeadCosts,
   getLeadSources,
   getLeads,
 } from "@/lib/data";
+import { requireRole } from "@/lib/auth/session";
 import { formatCurrency } from "@/lib/format";
 import { resolveWeek, shiftWeek, weekLabel } from "@/lib/weeks";
 import { PageHeader } from "@/components/shared/page-header";
@@ -55,13 +57,15 @@ export default async function LeadCostsPage({
   const nextWeek = shiftWeek(week, 1);
   const weekEnd = shiftWeek(week, 1);
 
-  const [sources, costs, previous, counts, leads] = await Promise.all([
-    getLeadSources(false),
-    getLeadCosts(week),
-    getLeadCosts(prevWeek),
-    countLeadsBySource(week),
-    getLeads(),
-  ]);
+  const [sources, costs, effective, previous, counts, leads] =
+    await Promise.all([
+      getLeadSources(false),
+      getLeadCosts(week),
+      getEffectiveCosts(week),
+      getEffectiveCosts(prevWeek),
+      countLeadsBySource(week),
+      getLeads(),
+    ]);
 
   const weekLeads = leads.filter(
     (l) => l.date >= week && parseISO(l.date) < parseISO(weekEnd),
@@ -85,24 +89,32 @@ export default async function LeadCostsPage({
         title="Lead Costs"
         description="Set how much each lead source costs per week (Monday to Sunday)."
         actions={
-          <div className="flex w-full items-center gap-2 rounded-xl border bg-white p-1.5 sm:w-auto">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Link
-              href={`/admin/sales/lead-costs?week=${prevWeek}`}
-              aria-label="Previous week"
-              className={navBtn}
+              href="/admin/sales/lead-costs/history"
+              className="flex h-11 items-center justify-center gap-2 rounded-lg border bg-white px-4 text-sm font-semibold hover:border-foreground/30"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <History className="h-4 w-4" /> Cost history
             </Link>
-            <p className="min-w-[190px] flex-1 text-center font-heading text-base font-bold sm:text-lg">
-              {label}
-            </p>
-            <Link
-              href={`/admin/sales/lead-costs?week=${nextWeek}`}
-              aria-label="Next week"
-              className={navBtn}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Link>
+            <div className="flex items-center gap-2 rounded-xl border bg-white p-1.5">
+              <Link
+                href={`/admin/sales/lead-costs?week=${prevWeek}`}
+                aria-label="Previous week"
+                className={navBtn}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+              <p className="min-w-[190px] flex-1 text-center font-heading text-base font-bold sm:text-lg">
+                {label}
+              </p>
+              <Link
+                href={`/admin/sales/lead-costs?week=${nextWeek}`}
+                aria-label="Next week"
+                className={navBtn}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
         }
       />
@@ -114,7 +126,8 @@ export default async function LeadCostsPage({
           weekLabel={label}
           sources={sources.map((s) => ({ id: s.id, name: s.name }))}
           costs={toMap(costs)}
-          previousCosts={toMap(previous)}
+          effective={effective}
+          previousCosts={previous}
           leadCounts={counts}
         />
 
@@ -159,6 +172,10 @@ export default async function LeadCostsPage({
                 away.
               </li>
               <li>Leads with a manual override keep their own cost.</li>
+              <li>
+                If a week has no cost, last week&apos;s cost is used until you
+                update it.
+              </li>
             </ul>
           </div>
         </aside>

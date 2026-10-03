@@ -33,6 +33,7 @@ import type {
 import { getDrivers, getReps, getUserById } from "./users";
 import { shiftWeek, weekStartOf } from "@/lib/weeks";
 export * from "./users";
+export * from "./fleet";
 
 const inRange = (date: string, r?: DateRange) =>
   (!r?.from || date >= r.from) && (!r?.to || date <= r.to);
@@ -201,14 +202,6 @@ export async function getDriverMonthlyTrend(
 }
 
 /* ---------- Sales (sample data until Granot is connected) ---------- */
-const SAMPLE_COSTS: Record<string, number> = {
-  "src-google-ppc": 95,
-  "src-tv-ad": 120,
-  "src-google-lead": 0,
-  "src-direct": 0,
-  "src-referral": 100,
-  "src-yelp": 60,
-};
 
 /** Same random numbers every time for the same seed, so sample data stays stable */
 function seeded(seed: string) {
@@ -226,36 +219,79 @@ function seeded(seed: string) {
   };
 }
 
-function costFor(sourceId: string, date: string) {
-  const week = weekStartOf(parseISO(date));
-  return (
-    db.leadCosts.find((c) => c.sourceId === sourceId && c.week === week)
-      ?.cost ?? 0
-  );
+/** Explicit costs on some weeks only, so carry-forward is visible in the sample data */
+const SAMPLE_COST_WEEKS: { weeksAgo: number; costs: Record<string, number> }[] =
+  [
+    {
+      weeksAgo: 11,
+      costs: {
+        "src-google-ppc": 90,
+        "src-tv-ad": 120,
+        "src-google-lead": 0,
+        "src-direct": 0,
+        "src-referral": 100,
+        "src-yelp": 55,
+      },
+    },
+    { weeksAgo: 7, costs: { "src-google-ppc": 95, "src-yelp": 60 } },
+    { weeksAgo: 4, costs: { "src-tv-ad": 135, "src-referral": 90 } },
+    { weeksAgo: 1, costs: { "src-google-ppc": 105 } },
+  ];
+
+function makeLeadCost(sourceId: string, week: string, cost: number): LeadCost {
+  const source =
+    db.leadSources.find((s) => s.id === sourceId)?.name ?? sourceId;
+  return {
+    id: `lc-${week}-${sourceId}`,
+    sourceId,
+    source: source as LeadCost["source"],
+    week,
+    month: format(parseISO(week), "yyyy-MM"),
+    cost,
+  };
 }
 
 function ensureSampleCosts() {
   if (db.sampleState.costsSeeded) return;
   db.sampleState.costsSeeded = true;
   const thisWeek = weekStartOf(new Date());
-  for (let w = 0; w < 12; w++) {
-    const week = shiftWeek(thisWeek, -w);
-    for (const [sourceId, cost] of Object.entries(SAMPLE_COSTS)) {
-      if (
-        !db.leadCosts.some((c) => c.sourceId === sourceId && c.week === week)
-      ) {
-        db.leadCosts.push({
-          id: `lc-${week}-${sourceId}`,
-          sourceId,
-          source: (db.leadSources.find((s) => s.id === sourceId)?.name ??
-            sourceId) as LeadCost["source"],
-          week,
-          month: format(parseISO(week), "yyyy-MM"),
-          cost,
-        });
-      }
+  for (const entry of SAMPLE_COST_WEEKS) {
+    const week = shiftWeek(thisWeek, -entry.weeksAgo);
+    for (const [sourceId, cost] of Object.entries(entry.costs)) {
+      db.leadCosts.push(makeLeadCost(sourceId, week, cost));
     }
   }
+}
+
+/** A source's cost for a week. If none was entered, the most recent earlier week's cost is used. */
+function effectiveCost(
+  sourceId: string,
+  week: string,
+): { cost: number; fromWeek: string | null } {
+  const row = db.leadCosts
+    .filter((c) => c.sourceId === sourceId && c.week <= week)
+    .sort((a, b) => b.week.localeCompare(a.week))[0];
+  return row
+    ? { cost: row.cost, fromWeek: row.week }
+    : { cost: 0, fromWeek: null };
+}
+
+function costFor(sourceId: string, date: string) {
+  return effectiveCost(sourceId, weekStartOf(parseISO(date))).cost;
+}
+
+/** Re-applies weekly costs to a source's leads (skips manual overrides). Returns how many changed. */
+function recalcSourceLeads(sourceId: string) {
+  let changed = 0;
+  db.leads.forEach((l) => {
+    if (l.sourceId !== sourceId || l.costOverridden) return;
+    const cost = costFor(sourceId, l.date);
+    if (cost !== l.leadCost) {
+      l.leadCost = cost;
+      changed++;
+    }
+  });
+  return changed;
 }
 
 /** Creates sample open/booked leads for every real sales rep (once per rep) */
@@ -472,29 +508,63 @@ export async function upsertLeadCost(
     (c) => c.sourceId === sourceId && c.week === week,
   );
   if (existing) existing.cost = cost;
-  else
-    db.leadCosts.push({
-      id: `lc-${week}-${sourceId}`,
-      sourceId,
-      source: (db.leadSources.find((s) => s.id === sourceId)?.name ??
-        sourceId) as LeadCost["source"],
-      week,
-      month: format(parseISO(week), "yyyy-MM"),
-      cost,
-    });
+  else db.leadCosts.push(makeLeadCost(sourceId, week, cost));
+  return recalcSourceLeads(sourceId);
+}
 
-  let affected = 0;
-  db.leads.forEach((l) => {
-    if (
-      l.sourceId === sourceId &&
-      weekStartOf(parseISO(l.date)) === week &&
-      !l.costOverridden
-    ) {
-      l.leadCost = cost;
-      affected++;
-    }
-  });
-  return affected;
+/** Removes a week's own cost so it falls back to the previous week's cost */
+export async function removeLeadCost(
+  sourceId: string,
+  week: string,
+): Promise<number> {
+  const i = db.leadCosts.findIndex(
+    (c) => c.sourceId === sourceId && c.week === week,
+  );
+  if (i === -1) return 0;
+  db.leadCosts.splice(i, 1);
+  return recalcSourceLeads(sourceId);
+}
+
+/** Cost in effect for each source in a week, and whether it was carried over */
+export async function getEffectiveCosts(
+  week: string,
+): Promise<
+  Record<string, { cost: number; fromWeek: string | null; carried: boolean }>
+> {
+  ensureSampleCosts();
+  return Object.fromEntries(
+    db.leadSources.map((s) => {
+      const e = effectiveCost(s.id, week);
+      return [s.id, { ...e, carried: e.fromWeek !== week }];
+    }),
+  );
+}
+
+/** Weekly cost history for every source, newest week first */
+export async function getCostHistory(weeks = 16) {
+  ensureSampleCosts();
+  const thisWeek = weekStartOf(new Date());
+  const list = Array.from({ length: weeks }, (_, i) => shiftWeek(thisWeek, -i));
+  const cells: Record<
+    string,
+    Record<string, { cost: number; carried: boolean; set: boolean }>
+  > = {};
+  for (const week of list) {
+    cells[week] = Object.fromEntries(
+      db.leadSources.map((s) => {
+        const e = effectiveCost(s.id, week);
+        return [
+          s.id,
+          {
+            cost: e.cost,
+            carried: e.fromWeek !== week,
+            set: e.fromWeek !== null,
+          },
+        ];
+      }),
+    );
+  }
+  return { weeks: list, sources: await getLeadSources(true), cells };
 }
 
 /** cost = null resets the lead back to its source's weekly cost */
@@ -766,7 +836,9 @@ export async function getSettings(): Promise<AppSettings> {
   return db.settings;
 }
 
-export async function updateSettings(next: AppSettings): Promise<AppSettings> {
+export async function updateSettings(
+  next: Pick<AppSettings, "company" | "damageAlertEmails">,
+): Promise<AppSettings> {
   db.settings.company = { ...next.company };
   db.settings.damageAlertEmails = [...next.damageAlertEmails];
   return db.settings;

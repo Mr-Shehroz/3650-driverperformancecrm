@@ -101,7 +101,7 @@ function SidebarContent({
       {/* Links */}
       <nav
         className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden px-3 py-5",
+          "flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sidebar-scroll",
           rail ? "space-y-3" : "space-y-6",
         )}
       >
