@@ -11,6 +11,10 @@ import type {
   LeadSourceRow,
   AuditEntry,
   AppSettings,
+  Truck,
+  PreTripInspection,
+  MaintenanceTicket,
+  RoadsideInspection,
 } from "@/types";
 
 export const MOCK_PASSWORD = "demo1234";
@@ -94,6 +98,7 @@ export const passwords: Record<string, string> = {};
 export const settings: AppSettings = {
   company: { ...COMPANY },
   damageAlertEmails: ["justin@drs.test"],
+  scoring: { baseScore: 100, clean: 5, violations: -10, outOfService: -25 },
 };
 
 /** Results of offline uploads, keyed by the phone's item ID (prevents duplicates on retry) */
@@ -468,4 +473,53 @@ export const leads: Lead[] = [];
 export const sampleState = {
   costsSeeded: false,
   seededReps: [] as string[],
+  fleetSeeded: false,
 };
+
+/* ---------- Fleet (sample data) ---------- */
+export const trucks: Truck[] = [
+  {
+    id: "t-101",
+    unitNumber: "101",
+    description: "26 ft box truck · Freightliner M2",
+    plate: "FL 4KT-221",
+    active: true,
+    status: "safe",
+    odometer: 182340,
+    lastInspectionAt: null,
+  },
+  {
+    id: "t-102",
+    unitNumber: "102",
+    description: "26 ft box truck · International MV",
+    plate: "FL 7HD-905",
+    active: true,
+    status: "safe",
+    odometer: 214980,
+    lastInspectionAt: null,
+  },
+  {
+    id: "t-205",
+    unitNumber: "205",
+    description: "53 ft tractor-trailer · Volvo VNL",
+    plate: "FL 2PX-118",
+    active: true,
+    status: "safe",
+    odometer: 401225,
+    lastInspectionAt: null,
+  },
+  {
+    id: "t-310",
+    unitNumber: "310",
+    description: "16 ft cube van · Ford E-450",
+    plate: "FL 9QR-640",
+    active: true,
+    status: "safe",
+    odometer: 96410,
+    lastInspectionAt: null,
+  },
+];
+
+export const preTrips: PreTripInspection[] = [];
+export const tickets: MaintenanceTicket[] = [];
+export const roadside: RoadsideInspection[] = [];

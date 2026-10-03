@@ -20,7 +20,12 @@ import {
   getAllJobSummaries,
   getDriverMetrics,
   getDriverMonthlyTrend,
+  getDriverScore,
+  getRoadside,
+  getScoring,
+  getTrucks,
   getUserById,
+  pointsFor,
 } from "@/lib/data";
 import { resolveFilters, type FilterParams } from "@/lib/periods";
 import { formatCurrency, formatPercent } from "@/lib/format";
@@ -30,6 +35,8 @@ import { Pill } from "@/components/shared/pill";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { JobsTable } from "@/components/admin/jobs-table";
 import { TrendChart } from "@/components/driver/trend-chart";
+import { ScoreCard } from "@/components/fleet/score-card";
+import { RoadsideList } from "@/components/fleet/roadside-list";
 
 const rate = (v: number | null) => (v === null ? "—" : formatPercent(v));
 
@@ -46,11 +53,18 @@ export default async function AdminDriverProfile({
   if (!driver || driver.role !== "driver") notFound();
 
   const { range, verifiedOnly, label } = resolveFilters(await searchParams);
-  const [m, trend, jobs] = await Promise.all([
+
+  const [m, trend, jobs, score, roadside, trucks, scoring] = await Promise.all([
     getDriverMetrics(id, { range, verifiedOnly }),
     getDriverMonthlyTrend(id, 6),
     getAllJobSummaries({ range, driverId: id }),
+    getDriverScore(id, range),
+    getRoadside({ driverId: id, range }),
+    getTrucks(),
+    getScoring(),
   ]);
+
+  const units = Object.fromEntries(trucks.map((t) => [t.id, t.unitNumber]));
 
   return (
     <div>
@@ -63,7 +77,7 @@ export default async function AdminDriverProfile({
 
       {/* Profile header */}
       <div className="mb-6 flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
-        <UserAvatar name={driver.name} className="h-16 w-16 text-xl" />
+        <UserAvatar name={driver.name} src={driver.avatarUrl} size={64} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold sm:text-3xl">{driver.name}</h1>
@@ -76,9 +90,10 @@ export default async function AdminDriverProfile({
           <div className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground sm:flex-row sm:gap-5">
             <a
               href={`mailto:${driver.email}`}
-              className="flex items-center gap-1.5 hover:text-foreground"
+              className="flex min-w-0 items-center gap-1.5 hover:text-foreground"
             >
-              <Mail className="h-4 w-4" /> {driver.email}
+              <Mail className="h-4 w-4 shrink-0" />{" "}
+              <span className="truncate">{driver.email}</span>
             </a>
             {driver.phone && (
               <a
@@ -99,6 +114,10 @@ export default async function AdminDriverProfile({
       </p>
 
       <div className="space-y-6">
+        {/* Score + breakdown */}
+        <ScoreCard score={score} period={label} />
+
+        {/* Metrics */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <StatCard
             label="Jobs completed"
@@ -160,12 +179,30 @@ export default async function AdminDriverProfile({
 
         <TrendChart data={trend} />
 
+        {/* Job log */}
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <h2 className="text-lg font-bold sm:text-xl">Job log</h2>
             <p className="text-sm text-muted-foreground">{jobs.length} jobs</p>
           </div>
           <JobsTable jobs={jobs} driverNames={{}} showDriver={false} />
+        </section>
+
+        {/* Roadside inspections */}
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h2 className="text-lg font-bold sm:text-xl">
+              Roadside inspections
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {roadside.length} inspections
+            </p>
+          </div>
+          <RoadsideList
+            rows={roadside}
+            units={units}
+            pointsFor={(r) => pointsFor(r.result, scoring)}
+          />
         </section>
       </div>
     </div>

@@ -13,7 +13,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getDriverMetrics, getDriverMonthlyTrend } from "@/lib/data";
+import {
+  getDriverMetrics,
+  getDriverMonthlyTrend,
+  getDriverScore,
+} from "@/lib/data";
+import { ScoreCard } from "@/components/fleet/score-card";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -55,9 +60,10 @@ export default async function DriverStatsPage({
     ? (raw as PeriodKey)
     : "month";
 
-  const [m, trend] = await Promise.all([
+  const [m, trend, score] = await Promise.all([
     getDriverMetrics(user.id, { range: rangeFor(period) }),
     getDriverMonthlyTrend(user.id, 6),
+    getDriverScore(user.id, rangeFor(period)),
   ]);
 
   return (
@@ -85,6 +91,8 @@ export default async function DriverStatsPage({
           </Link>
         ))}
       </div>
+
+      <ScoreCard score={score} />
 
       {/* Jobs & damage */}
       <section>

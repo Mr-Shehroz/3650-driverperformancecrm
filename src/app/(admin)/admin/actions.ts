@@ -21,6 +21,7 @@ import {
   leadSourceNameExists,
   renameLeadSource,
   setLeadSourceActive,
+  removeLeadCost,
 } from "@/lib/data";
 import type { RecordKind } from "@/types";
 import { passwordRule } from "@/lib/validation/password";
@@ -149,14 +150,14 @@ const leadCostsSchema = z.object({
   costs: z.array(
     z.object({
       sourceId: z.string().min(1),
-      cost: z.number().min(0).max(100000),
+      cost: z.number().min(0).max(100000).nullable(),
     }),
   ),
 });
 
 export async function saveLeadCostsAction(
   week: string,
-  costs: { sourceId: string; cost: number }[],
+  costs: { sourceId: string; cost: number | null }[],
 ): Promise<{ error?: string; affected?: number }> {
   await requireRole("admin");
   const parsed = leadCostsSchema.safeParse({ week, costs });
@@ -164,7 +165,10 @@ export async function saveLeadCostsAction(
 
   let affected = 0;
   for (const c of parsed.data.costs) {
-    affected += await upsertLeadCost(c.sourceId, parsed.data.week, c.cost);
+    affected +=
+      c.cost === null
+        ? await removeLeadCost(c.sourceId, parsed.data.week)
+        : await upsertLeadCost(c.sourceId, parsed.data.week, c.cost);
   }
   revalidateSales();
   return { affected };

@@ -244,6 +244,7 @@ export interface CompanyInfo {
 export interface AppSettings {
   company: CompanyInfo;
   damageAlertEmails: string[];
+  scoring: ScoringSettings;
 }
 
 export type LeadStatus = "open" | "booked";
@@ -291,4 +292,147 @@ export interface SourceBreakdownRow {
   totalLeadCost: number;
   cpa: number;
   revenue: number;
+}
+
+/* ---------- Fleet ---------- */
+export type TruckStatus = "safe" | "repair_soon" | "do_not_drive";
+
+export const TRUCK_STATUS_LABELS: Record<TruckStatus, string> = {
+  safe: "Safe to drive",
+  repair_soon: "Needs repair soon",
+  do_not_drive: "Do not drive",
+};
+
+export interface Truck {
+  id: string;
+  unitNumber: string;
+  description?: string;
+  plate?: string;
+  active: boolean;
+  status: TruckStatus;
+  odometer: number | null;
+  lastInspectionAt: string | null;
+}
+
+export type CheckItemKey =
+  "tires" | "fluids" | "lights" | "brakes" | "mirrors" | "equipment";
+export type CheckStatus = "ok" | "attention";
+
+export const CHECK_ITEMS: { key: CheckItemKey; label: string; hint: string }[] =
+  [
+    {
+      key: "tires",
+      label: "Tires",
+      hint: "Tread, pressure and sidewall damage",
+    },
+    {
+      key: "fluids",
+      label: "Oil / fluid leaks",
+      hint: "Under the truck and around the engine",
+    },
+    {
+      key: "lights",
+      label: "Lights",
+      hint: "Head, tail, brake and turn signals",
+    },
+    { key: "brakes", label: "Brakes", hint: "Pedal feel and air pressure" },
+    {
+      key: "mirrors",
+      label: "Mirrors / glass",
+      hint: "Cracks, chips and mirror position",
+    },
+    {
+      key: "equipment",
+      label: "Equipment",
+      hint: "Blankets, dollies, straps and tools",
+    },
+  ];
+
+export interface PreTripItem {
+  key: CheckItemKey;
+  status: CheckStatus;
+  notes?: string;
+  photos: string[];
+}
+
+export interface PreTripInspection {
+  id: string;
+  truckId: string;
+  driverId: string;
+  items: PreTripItem[];
+  odometer: number;
+  truckStatus: TruckStatus;
+  notes?: string;
+  signatureUrl: string;
+  capturedAtDevice: string;
+  receivedAtServer: string;
+  lat: number | null;
+  lng: number | null;
+  syncedOffline: boolean;
+}
+
+export type TicketStatus = "open" | "in_progress" | "fixed";
+
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  open: "Open",
+  in_progress: "In progress",
+  fixed: "Fixed",
+};
+
+export interface MaintenanceTicket {
+  id: string;
+  truckId: string;
+  inspectionId: string;
+  driverId: string;
+  itemKey: CheckItemKey;
+  notes?: string;
+  photos: string[];
+  severity: TruckStatus;
+  status: TicketStatus;
+  fixNote?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RoadsideResult = "clean" | "violations" | "out_of_service";
+
+export const ROADSIDE_RESULT_LABELS: Record<RoadsideResult, string> = {
+  clean: "Clean",
+  violations: "Violations",
+  out_of_service: "Out of service",
+};
+
+export interface RoadsideInspection {
+  id: string;
+  driverId: string;
+  truckId: string;
+  date: string;
+  state: string;
+  location: string;
+  result: RoadsideResult;
+  violationNotes?: string;
+  report: { name: string; type: "image" | "pdf"; url?: string } | null;
+  loggedBy: string;
+  createdAt: string;
+}
+
+export interface ScoringSettings {
+  baseScore: number;
+  clean: number;
+  violations: number;
+  outOfService: number;
+}
+
+export interface ScoreLine {
+  key: RoadsideResult;
+  label: string;
+  count: number;
+  points: number;
+  total: number;
+}
+
+export interface DriverScore {
+  base: number;
+  score: number;
+  lines: ScoreLine[];
 }

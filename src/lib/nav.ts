@@ -15,6 +15,10 @@ import {
   Truck,
   Users,
   Tags,
+  ClipboardCheck,
+  Siren,
+  Wrench,
+  Container,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -22,9 +26,10 @@ export type NavGroup = { title: string; items: NavItem[] };
 
 export const DRIVER_NAV: NavItem[] = [
   { href: "/driver", label: "Home", icon: Home },
+  { href: "/driver/pre-trip", label: "Pre-trip", icon: ClipboardCheck },
   { href: "/driver/jobs/new", label: "New Job", icon: PlusCircle },
   { href: "/driver/jobs", label: "History", icon: History },
-  { href: "/driver/stats", label: "My Stats", icon: BarChart3 },
+  { href: "/driver/stats", label: "Stats", icon: BarChart3 },
 ];
 
 export const SALES_NAV: NavItem[] = [
@@ -42,6 +47,14 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/drivers", label: "Drivers", icon: Truck },
       { href: "/admin/leaderboard", label: "Leaderboard", icon: Trophy },
+    ],
+  },
+  {
+    title: "Fleet",
+    items: [
+      { href: "/admin/trucks", label: "Trucks", icon: Container },
+      { href: "/admin/maintenance", label: "Maintenance", icon: Wrench },
+      { href: "/admin/roadside", label: "Roadside", icon: Siren },
     ],
   },
   {
@@ -81,6 +94,17 @@ export const DRIVER_NAV_GROUPS: NavGroup[] = [
       { href: "/driver/jobs/new", label: "New Job", icon: PlusCircle },
       { href: "/driver/jobs", label: "Job History", icon: History },
       { href: "/driver/outbox", label: "Sync queue", icon: RefreshCw },
+    ],
+  },
+  {
+    title: "Truck",
+    items: [
+      {
+        href: "/driver/pre-trip",
+        label: "Pre-trip check",
+        icon: ClipboardCheck,
+      },
+      { href: "/driver/roadside", label: "Roadside inspections", icon: Siren },
     ],
   },
   {
