@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { format } from "date-fns";
 import { getSession } from "@/lib/auth/session";
-import { getAllRepMetrics } from "@/lib/data";
+import { getAllRepMetrics, getLeadSources } from "@/lib/data";
 import { resolveFilters } from "@/lib/periods";
-import { resolveSource } from "@/lib/sales";
+import { resolveSourceId, sourceNameMap } from "@/lib/sales";
 import { toCsv } from "@/lib/csv";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
 
   const sp = Object.fromEntries(req.nextUrl.searchParams);
   const { range } = resolveFilters(sp);
-  const source = resolveSource(sp.source);
-  const rows = await getAllRepMetrics({ range, source });
+  const sources = await getLeadSources(true);
+  const sourceId = resolveSourceId(sp.source, sources);
+  const rows = await getAllRepMetrics({ range, sourceId });
 
   const csv = toCsv(
     [
@@ -42,10 +43,15 @@ export async function GET(req: NextRequest) {
   const period = range
     ? `${range.from ?? "start"}_to_${range.to ?? "today"}`
     : "all-time";
+  const sourceSlug = sourceId
+    ? `-${sourceNameMap(sources)
+        [sourceId].toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")}`
+    : "";
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="drs-sales-${period}${source ? `-${source}` : ""}-${format(new Date(), "yyyyMMdd")}.csv"`,
+      "Content-Disposition": `attachment; filename="drs-sales-${period}${sourceSlug}-${format(new Date(), "yyyyMMdd")}.csv"`,
     },
   });
 }

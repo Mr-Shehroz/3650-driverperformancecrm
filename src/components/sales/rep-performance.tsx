@@ -15,19 +15,19 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import { StatCard } from "@/components/shared/stat-card";
 import { MetricChart } from "@/components/shared/metric-chart";
 import { SourceBreakdown } from "./source-breakdown";
-import type { DateRange, LeadSource } from "@/types";
+import type { DateRange } from "@/types";
 
 export async function RepPerformance({
   repId,
   range,
-  source,
+  sourceId,
 }: {
   repId: string;
   range?: DateRange;
-  source?: LeadSource;
+  sourceId?: string;
 }) {
   const [m, breakdown, trend] = await Promise.all([
-    getRepMetrics(repId, { range, source }),
+    getRepMetrics(repId, { range, sourceId }),
     getSourceBreakdown({ repId, range }),
     getRepMonthlyTrend(repId, 6),
   ]);

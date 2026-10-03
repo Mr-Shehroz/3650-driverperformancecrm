@@ -14,6 +14,7 @@ import {
   Trophy,
   Truck,
   Users,
+  Tags,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -47,6 +48,7 @@ export const ADMIN_NAV: NavGroup[] = [
     title: "Sales",
     items: [
       { href: "/admin/sales", label: "Sales Reps", icon: TrendingUp },
+      { href: "/admin/sales/lead-sources", label: "Lead Sources", icon: Tags },
       {
         href: "/admin/sales/lead-costs",
         label: "Lead Costs",

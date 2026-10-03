@@ -1,26 +1,22 @@
 import { Pill } from "@/components/shared/pill";
 import { formatCurrency, formatDate } from "@/lib/format";
-import {
-  LEAD_SOURCE_LABELS,
-  LEAD_STATUS_LABELS,
-  type Lead,
-  type LeadStatus,
-} from "@/types";
+import { LEAD_STATUS_LABELS, type Lead, type LeadStatus } from "@/types";
 import { LeadCostCell } from "./lead-cost-cell";
 
-const STATUS_TONE: Record<LeadStatus, "neutral" | "success" | "danger"> = {
+const STATUS_TONE: Record<LeadStatus, "neutral" | "success"> = {
   open: "neutral",
   booked: "success",
-  lost: "danger",
 };
 
 export function LeadsTable({
   leads,
+  sourceNames,
   repNames,
   showRep = false,
   editableCost = false,
 }: {
   leads: Lead[];
+  sourceNames: Record<string, string>;
   repNames?: Record<string, string>;
   showRep?: boolean;
   editableCost?: boolean;
@@ -32,6 +28,8 @@ export function LeadsTable({
       </p>
     );
   }
+
+  const source = (id: string) => sourceNames[id] ?? "Unknown";
 
   return (
     <>
@@ -56,7 +54,7 @@ export function LeadsTable({
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Source</p>
-                <p className="font-semibold">{LEAD_SOURCE_LABELS[l.source]}</p>
+                <p className="font-semibold">{source(l.sourceId)}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Job value</p>
@@ -112,7 +110,7 @@ export function LeadsTable({
                     </td>
                   )}
                   <td className="whitespace-nowrap px-3 py-3">
-                    {LEAD_SOURCE_LABELS[l.source]}
+                    {source(l.sourceId)}
                   </td>
                   <td className="px-3 py-3">
                     <Pill tone={STATUS_TONE[l.status]}>

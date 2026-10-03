@@ -8,8 +8,7 @@ import type {
   Upsell,
   Lead,
   LeadCost,
-  LeadSource,
-  LeadStatus,
+  LeadSourceRow,
   AuditEntry,
   AppSettings,
 } from "@/types";
@@ -420,51 +419,53 @@ export const upsells: Upsell[] = [
   },
 ];
 
-const SOURCES: LeadSource[] = [
-  "google_ppc",
-  "tv_ad",
-  "google_lead",
-  "direct",
-  "referral",
+/* ---------- Sales (sample data until Granot is connected) ---------- */
+export const leadSources: LeadSourceRow[] = [
+  {
+    id: "src-google-ppc",
+    name: "Google PPC",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
+  {
+    id: "src-tv-ad",
+    name: "TV Ad",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
+  {
+    id: "src-google-lead",
+    name: "Google Lead",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
+  {
+    id: "src-direct",
+    name: "Direct",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
+  {
+    id: "src-referral",
+    name: "Referral",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
+  {
+    id: "src-yelp",
+    name: "Yelp",
+    active: true,
+    createdAt: "2026-08-01T00:00:00Z",
+  },
 ];
-const BASE_COST: Record<LeadSource, number> = {
-  google_ppc: 95,
-  tv_ad: 120,
-  google_lead: 0,
-  direct: 0,
-  referral: 100,
-  other: 0,
+
+/** Weekly cost per source. Sample weeks are filled in on first use. */
+export const leadCosts: LeadCost[] = [];
+
+/** Sample leads are generated for the real sales reps on first use. */
+export const leads: Lead[] = [];
+
+export const sampleState = {
+  costsSeeded: false,
+  seededReps: [] as string[],
 };
-
-export const leadCosts: LeadCost[] = ["2026-08", "2026-09"].flatMap((month) =>
-  SOURCES.map((source) => ({
-    id: `lc-${month}-${source}`,
-    source,
-    month,
-    cost: BASE_COST[source],
-  })),
-);
-
-const REPS = ["r-1", "r-2", "r-3"];
-
-export const leads: Lead[] = Array.from({ length: 42 }, (_, i) => {
-  const month = i < 21 ? "2026-08" : "2026-09";
-  const day = String((i % 27) + 1).padStart(2, "0");
-  const source = SOURCES[i % SOURCES.length];
-  const status: LeadStatus =
-    i % 3 === 0 ? "booked" : i % 4 === 0 ? "lost" : "open";
-  const cost =
-    leadCosts.find((c) => c.month === month && c.source === source)?.cost ?? 0;
-  return {
-    id: `l-${i + 1}`,
-    granotId: `GR-${50100 + i}`,
-    date: `${month}-${day}`,
-    repId: REPS[i % REPS.length],
-    source,
-    leadCost: cost,
-    costOverridden: false,
-    status,
-    bookedDate: status === "booked" ? `${month}-${day}` : null,
-    jobValue: status === "booked" ? 2800 + (i % 7) * 450 : null,
-  };
-});

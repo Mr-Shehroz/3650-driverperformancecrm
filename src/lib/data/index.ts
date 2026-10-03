@@ -1,4 +1,11 @@
-import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import {
+  endOfMonth,
+  format,
+  parseISO,
+  startOfMonth,
+  subDays,
+  subMonths,
+} from "date-fns";
 import * as db from "@/lib/mock/data";
 import type {
   AppSettings,
@@ -11,7 +18,7 @@ import type {
   JobSummary,
   Lead,
   LeadCost,
-  LeadSource,
+  LeadSourceRow,
   MonthlyPoint,
   PreDamage,
   RecordKind,
@@ -23,7 +30,8 @@ import type {
   Upsell,
   User,
 } from "@/types";
-import { getDrivers, getReps } from "./users";
+import { getDrivers, getReps, getUserById } from "./users";
+import { shiftWeek, weekStartOf } from "@/lib/weeks";
 export * from "./users";
 
 const inRange = (date: string, r?: DateRange) =>
@@ -192,55 +200,171 @@ export async function getDriverMonthlyTrend(
   );
 }
 
-/* ---------- Sales ---------- */
+/* ---------- Sales (sample data until Granot is connected) ---------- */
+const SAMPLE_COSTS: Record<string, number> = {
+  "src-google-ppc": 95,
+  "src-tv-ad": 120,
+  "src-google-lead": 0,
+  "src-direct": 0,
+  "src-referral": 100,
+  "src-yelp": 60,
+};
+
+/** Same random numbers every time for the same seed, so sample data stays stable */
+function seeded(seed: string) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  if (h === 0) h = 1;
+  return () => {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    return (h >>> 0) / 4294967296;
+  };
+}
+
+function costFor(sourceId: string, date: string) {
+  const week = weekStartOf(parseISO(date));
+  return (
+    db.leadCosts.find((c) => c.sourceId === sourceId && c.week === week)
+      ?.cost ?? 0
+  );
+}
+
+function ensureSampleCosts() {
+  if (db.sampleState.costsSeeded) return;
+  db.sampleState.costsSeeded = true;
+  const thisWeek = weekStartOf(new Date());
+  for (let w = 0; w < 12; w++) {
+    const week = shiftWeek(thisWeek, -w);
+    for (const [sourceId, cost] of Object.entries(SAMPLE_COSTS)) {
+      if (
+        !db.leadCosts.some((c) => c.sourceId === sourceId && c.week === week)
+      ) {
+        db.leadCosts.push({
+          id: `lc-${week}-${sourceId}`,
+          sourceId,
+          source: (db.leadSources.find((s) => s.id === sourceId)?.name ??
+            sourceId) as LeadCost["source"],
+          week,
+          month: format(parseISO(week), "yyyy-MM"),
+          cost,
+        });
+      }
+    }
+  }
+}
+
+/** Creates sample open/booked leads for every real sales rep (once per rep) */
+async function ensureSampleLeads() {
+  ensureSampleCosts();
+  const sources = db.leadSources.filter((s) => s.active);
+  if (!sources.length) return;
+
+  const reps = await getReps(true);
+  const today = new Date();
+
+  for (const rep of reps) {
+    if (db.sampleState.seededReps.includes(rep.id)) continue;
+    db.sampleState.seededReps.push(rep.id);
+
+    const rand = seeded(rep.id);
+    for (let i = 0; i < 28; i++) {
+      const date = format(
+        subDays(today, Math.floor(rand() * 75)),
+        "yyyy-MM-dd",
+      );
+      const source = sources[Math.floor(rand() * sources.length)];
+      const booked = rand() < 0.4;
+      db.leads.push({
+        id: `l-${rep.id.slice(0, 8)}-${i}`,
+        granotId: `GR-${50000 + Math.floor(rand() * 49999)}`,
+        date,
+        repId: rep.id,
+        sourceId: source.id,
+        source: source.name as Lead["source"],
+        leadCost: costFor(source.id, date),
+        costOverridden: false,
+        status: booked ? "booked" : "open",
+        bookedDate: booked ? date : null,
+        jobValue: booked ? 2400 + Math.floor(rand() * 45) * 100 : null,
+      });
+    }
+  }
+}
+
+/* --- Lead sources --- */
+export async function getLeadSources(
+  includeInactive = true,
+): Promise<LeadSourceRow[]> {
+  return [...db.leadSources]
+    .filter((s) => includeInactive || s.active)
+    .sort(
+      (a, b) =>
+        Number(b.active) - Number(a.active) || a.name.localeCompare(b.name),
+    );
+}
+
+export async function leadSourceNameExists(name: string, excludeId?: string) {
+  const n = name.trim().toLowerCase();
+  return db.leadSources.some(
+    (s) => s.name.toLowerCase() === n && s.id !== excludeId,
+  );
+}
+
+export async function createLeadSource(name: string): Promise<LeadSourceRow> {
+  const row: LeadSourceRow = {
+    id: `src-${crypto.randomUUID().slice(0, 8)}`,
+    name: name.trim(),
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  db.leadSources.push(row);
+  return row;
+}
+
+export async function renameLeadSource(
+  id: string,
+  name: string,
+): Promise<LeadSourceRow | null> {
+  const row = db.leadSources.find((s) => s.id === id);
+  if (!row) return null;
+  row.name = name.trim();
+  return row;
+}
+
+export async function setLeadSourceActive(
+  id: string,
+  active: boolean,
+): Promise<LeadSourceRow | null> {
+  const row = db.leadSources.find((s) => s.id === id);
+  if (!row) return null;
+  row.active = active;
+  return row;
+}
+
+/* --- Leads + metrics --- */
 export async function getLeads(
   opts: {
     repId?: string;
     range?: DateRange;
-    source?: string;
+    sourceId?: string;
     status?: string;
   } = {},
 ): Promise<Lead[]> {
+  await ensureSampleLeads();
   return db.leads
     .filter(
       (l) =>
         (!opts.repId || l.repId === opts.repId) &&
-        (!opts.source || l.source === opts.source) &&
+        (!opts.sourceId || l.sourceId === opts.sourceId) &&
         (!opts.status || l.status === opts.status) &&
         inRange(l.date, opts.range),
     )
     .sort((a, b) => b.date.localeCompare(a.date));
-}
-
-export async function getRepMetrics(
-  repId: string,
-  opts: { range?: DateRange; source?: string } = {},
-): Promise<RepMetrics> {
-  const rep = db.users.find((u) => u.id === repId);
-  const leads = await getLeads({ repId, ...opts });
-  const booked = leads.filter((l) => l.status === "booked");
-  const totalLeadCost = leads.reduce((s, l) => s + l.leadCost, 0);
-  return {
-    repId,
-    repName: rep?.name ?? "Unknown",
-    leads: leads.length,
-    booked: booked.length,
-    closingRatio: pct(booked.length, leads.length),
-    totalLeadCost,
-    cpa: pct(totalLeadCost, booked.length),
-    revenue: booked.reduce((s, l) => s + (l.jobValue ?? 0), 0),
-  };
-}
-
-export async function getAllRepMetrics(
-  opts: { range?: DateRange; source?: string } = {},
-) {
-  const reps = await getReps(true);
-  return Promise.all(reps.map((r) => getRepMetrics(r.id, opts)));
-}
-
-export async function getLeadCosts(month?: string): Promise<LeadCost[]> {
-  return db.leadCosts.filter((c) => !month || c.month === month);
 }
 
 function summarizeLeads(leads: Lead[]) {
@@ -256,18 +380,39 @@ function summarizeLeads(leads: Lead[]) {
   };
 }
 
+export async function getRepMetrics(
+  repId: string,
+  opts: { range?: DateRange; sourceId?: string } = {},
+  repName?: string,
+): Promise<RepMetrics> {
+  const name = repName ?? (await getUserById(repId))?.name ?? "Unknown";
+  const leads = await getLeads({ repId, ...opts });
+  return { repId, repName: name, ...summarizeLeads(leads) };
+}
+
+export async function getAllRepMetrics(
+  opts: { range?: DateRange; sourceId?: string } = {},
+) {
+  const reps = await getReps(true);
+  return Promise.all(reps.map((r) => getRepMetrics(r.id, opts, r.name)));
+}
+
 export async function getSourceBreakdown(
   opts: { repId?: string; range?: DateRange } = {},
 ): Promise<SourceBreakdownRow[]> {
   const leads = await getLeads(opts);
-  const sources = Array.from(
-    new Set(leads.map((l) => l.source)),
-  ) as LeadSource[];
-  return sources
-    .map((source) => ({
-      source,
-      ...summarizeLeads(leads.filter((l) => l.source === source)),
-    }))
+  const names = Object.fromEntries(db.leadSources.map((s) => [s.id, s.name]));
+  const ids = Array.from(new Set(leads.map((l) => l.sourceId)));
+  return ids
+    .map((sourceId) => {
+      const sourceName = names[sourceId] ?? "Unknown";
+      return {
+        sourceId,
+        sourceName,
+        source: sourceName as SourceBreakdownRow["source"],
+        ...summarizeLeads(leads.filter((l) => l.sourceId === sourceId)),
+      };
+    })
     .sort((a, b) => b.leads - a.leads);
 }
 
@@ -279,14 +424,15 @@ export async function getRepMonthlyTrend(
   return Promise.all(
     Array.from({ length: months }, async (_, i) => {
       const d = subMonths(now, months - 1 - i);
-      const leads = await getLeads({
-        repId,
-        range: {
-          from: format(startOfMonth(d), "yyyy-MM-dd"),
-          to: format(endOfMonth(d), "yyyy-MM-dd"),
-        },
-      });
-      const s = summarizeLeads(leads);
+      const s = summarizeLeads(
+        await getLeads({
+          repId,
+          range: {
+            from: format(startOfMonth(d), "yyyy-MM-dd"),
+            to: format(endOfMonth(d), "yyyy-MM-dd"),
+          },
+        }),
+      );
       return {
         month: format(d, "MMM"),
         leads: s.leads,
@@ -299,38 +445,51 @@ export async function getRepMonthlyTrend(
   );
 }
 
+/* --- Weekly lead costs --- */
+export async function getLeadCosts(week: string): Promise<LeadCost[]> {
+  ensureSampleCosts();
+  return db.leadCosts.filter((c) => c.week === week);
+}
+
 export async function countLeadsBySource(
-  month: string,
+  week: string,
 ): Promise<Record<string, number>> {
+  await ensureSampleLeads();
   const out: Record<string, number> = {};
   db.leads
-    .filter((l) => l.date.startsWith(month))
-    .forEach((l) => (out[l.source] = (out[l.source] ?? 0) + 1));
+    .filter((l) => weekStartOf(parseISO(l.date)) === week)
+    .forEach((l) => (out[l.sourceId] = (out[l.sourceId] ?? 0) + 1));
   return out;
 }
 
-function defaultLeadCost(source: LeadSource, month: string) {
-  return (
-    db.leadCosts.find((c) => c.source === source && c.month === month)?.cost ??
-    0
-  );
-}
-
-/** Sets the monthly cost for a source and applies it to that month's non-overridden leads */
+/** Sets a source's cost for one week and applies it to that week's non-overridden leads */
 export async function upsertLeadCost(
-  source: LeadSource,
-  month: string,
+  sourceId: string,
+  week: string,
   cost: number,
 ): Promise<number> {
   const existing = db.leadCosts.find(
-    (c) => c.source === source && c.month === month,
+    (c) => c.sourceId === sourceId && c.week === week,
   );
   if (existing) existing.cost = cost;
-  else db.leadCosts.push({ id: `lc-${month}-${source}`, source, month, cost });
+  else
+    db.leadCosts.push({
+      id: `lc-${week}-${sourceId}`,
+      sourceId,
+      source: (db.leadSources.find((s) => s.id === sourceId)?.name ??
+        sourceId) as LeadCost["source"],
+      week,
+      month: format(parseISO(week), "yyyy-MM"),
+      cost,
+    });
 
   let affected = 0;
   db.leads.forEach((l) => {
-    if (l.source === source && l.date.startsWith(month) && !l.costOverridden) {
+    if (
+      l.sourceId === sourceId &&
+      weekStartOf(parseISO(l.date)) === week &&
+      !l.costOverridden
+    ) {
       l.leadCost = cost;
       affected++;
     }
@@ -338,7 +497,7 @@ export async function upsertLeadCost(
   return affected;
 }
 
-/** cost = null resets the lead back to its source's monthly cost */
+/** cost = null resets the lead back to its source's weekly cost */
 export async function overrideLeadCost(
   leadId: string,
   cost: number | null,
@@ -347,7 +506,7 @@ export async function overrideLeadCost(
   if (!lead) return null;
   if (cost === null) {
     lead.costOverridden = false;
-    lead.leadCost = defaultLeadCost(lead.source, lead.date.slice(0, 7));
+    lead.leadCost = costFor(lead.sourceId, lead.date);
   } else {
     lead.costOverridden = true;
     lead.leadCost = cost;

@@ -90,7 +90,6 @@ export interface Upsell {
 
 export type LeadSource =
   "google_ppc" | "tv_ad" | "google_lead" | "direct" | "referral" | "other";
-export type LeadStatus = "open" | "booked" | "lost";
 
 export interface Lead {
   id: string;
@@ -158,12 +157,6 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   direct: "Direct",
   referral: "Referral",
   other: "Other",
-};
-
-export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
-  open: "Open",
-  booked: "Booked",
-  lost: "Lost",
 };
 
 export interface SourceBreakdownRow {
@@ -251,4 +244,51 @@ export interface CompanyInfo {
 export interface AppSettings {
   company: CompanyInfo;
   damageAlertEmails: string[];
+}
+
+export type LeadStatus = "open" | "booked";
+
+export interface LeadSourceRow {
+  id: string;
+  /** Shown everywhere in the app; should match the source name in Granot */
+  name: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface Lead {
+  id: string;
+  granotId: string;
+  date: string; // YYYY-MM-DD
+  repId: string;
+  sourceId: string;
+  leadCost: number;
+  costOverridden: boolean;
+  status: LeadStatus;
+  bookedDate: string | null;
+  jobValue: number | null;
+}
+
+export interface LeadCost {
+  id: string;
+  sourceId: string;
+  /** Monday of the week, YYYY-MM-DD */
+  week: string;
+  cost: number;
+}
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  open: "Open",
+  booked: "Booked",
+};
+
+export interface SourceBreakdownRow {
+  sourceId: string;
+  sourceName: string;
+  leads: number;
+  booked: number;
+  closingRatio: number;
+  totalLeadCost: number;
+  cpa: number;
+  revenue: number;
 }

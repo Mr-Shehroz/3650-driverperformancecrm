@@ -17,8 +17,12 @@ import {
   updateSettings,
   updateUser,
   upsertLeadCost,
+  createLeadSource,
+  leadSourceNameExists,
+  renameLeadSource,
+  setLeadSourceActive,
 } from "@/lib/data";
-import type { LeadSource, RecordKind } from "@/types";
+import type { RecordKind } from "@/types";
 import { passwordRule } from "@/lib/validation/password";
 
 export type AdminResult = {
@@ -135,37 +139,34 @@ export async function updateJobAction(
 }
 
 /* ---------- Sales ---------- */
+function revalidateSales() {
+  revalidatePath("/admin", "layout");
+  revalidatePath("/sales", "layout");
+}
+
 const leadCostsSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/),
+  week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   costs: z.array(
     z.object({
-      source: z.enum([
-        "google_ppc",
-        "tv_ad",
-        "google_lead",
-        "direct",
-        "referral",
-        "other",
-      ]),
+      sourceId: z.string().min(1),
       cost: z.number().min(0).max(100000),
     }),
   ),
 });
 
 export async function saveLeadCostsAction(
-  month: string,
-  costs: { source: LeadSource; cost: number }[],
+  week: string,
+  costs: { sourceId: string; cost: number }[],
 ): Promise<{ error?: string; affected?: number }> {
   await requireRole("admin");
-  const parsed = leadCostsSchema.safeParse({ month, costs });
+  const parsed = leadCostsSchema.safeParse({ week, costs });
   if (!parsed.success) return { error: "Enter valid costs (0 or more)." };
 
   let affected = 0;
   for (const c of parsed.data.costs) {
-    affected += await upsertLeadCost(c.source, parsed.data.month, c.cost);
+    affected += await upsertLeadCost(c.sourceId, parsed.data.week, c.cost);
   }
-  revalidatePath("/admin/sales", "layout");
-  revalidatePath("/sales", "layout");
+  revalidateSales();
   return { affected };
 }
 
@@ -179,8 +180,53 @@ export async function overrideLeadCostAction(
   }
   const lead = await overrideLeadCost(leadId, cost);
   if (!lead) return { error: "Lead not found." };
-  revalidatePath("/admin/sales", "layout");
-  revalidatePath("/sales", "layout");
+  revalidateSales();
+}
+
+const sourceNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Enter a source name")
+  .max(60, "Keep it under 60 characters");
+
+export async function createLeadSourceAction(
+  name: string,
+): Promise<AdminResult> {
+  await requireRole("admin");
+  const parsed = sourceNameSchema.safeParse(name);
+  if (!parsed.success)
+    return { fieldErrors: { name: parsed.error.issues[0].message } };
+  if (await leadSourceNameExists(parsed.data))
+    return { fieldErrors: { name: "This source already exists" } };
+
+  await createLeadSource(parsed.data);
+  revalidateSales();
+}
+
+export async function renameLeadSourceAction(
+  id: string,
+  name: string,
+): Promise<AdminResult> {
+  await requireRole("admin");
+  const parsed = sourceNameSchema.safeParse(name);
+  if (!parsed.success)
+    return { fieldErrors: { name: parsed.error.issues[0].message } };
+  if (await leadSourceNameExists(parsed.data, id))
+    return { fieldErrors: { name: "This source already exists" } };
+
+  const row = await renameLeadSource(id, parsed.data);
+  if (!row) return { error: "Source not found." };
+  revalidateSales();
+}
+
+export async function setLeadSourceActiveAction(
+  id: string,
+  active: boolean,
+): Promise<AdminResult> {
+  await requireRole("admin");
+  const row = await setLeadSourceActive(id, active);
+  if (!row) return { error: "Source not found." };
+  revalidateSales();
 }
 
 /* ---------- Users ---------- */
