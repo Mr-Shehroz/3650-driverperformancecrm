@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getLeads } from "@/lib/data";
+import { getLeadSources, getLeads } from "@/lib/data";
 import { resolveFilters, type FilterParams } from "@/lib/periods";
-import { SOURCE_OPTIONS, resolveSource } from "@/lib/sales";
-import { LEAD_SOURCE_LABELS } from "@/types";
+import { resolveSourceId, sourceNameMap, sourceOptions } from "@/lib/sales";
 import { PageHeader } from "@/components/shared/page-header";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { ParamPills } from "@/components/shared/param-pills";
@@ -19,8 +18,10 @@ export default async function SalesDashboard({
   const user = await requireRole("sales_rep");
   const sp = await searchParams;
   const { range, label } = resolveFilters(sp);
-  const source = resolveSource(sp.source);
-  const recent = (await getLeads({ repId: user.id, range, source })).slice(
+  const sources = await getLeadSources(true);
+  const sourceId = resolveSourceId(sp.source, sources);
+  const names = sourceNameMap(sources);
+  const recent = (await getLeads({ repId: user.id, range, sourceId })).slice(
     0,
     5,
   );
@@ -29,18 +30,18 @@ export default async function SalesDashboard({
     <div>
       <PageHeader
         title="My Performance"
-        description={`${label}${source ? ` · ${LEAD_SOURCE_LABELS[source]}` : ""}`}
+        description={`${label}${sourceId ? ` · ${names[sourceId]}` : ""}`}
       />
       <FilterBar showVerified={false} />
       <ParamPills
         param="source"
-        options={SOURCE_OPTIONS}
+        options={sourceOptions(sources)}
         allLabel="All sources"
         label="Source"
         className="-mt-2 mb-6"
       />
 
-      <RepPerformance repId={user.id} range={range} source={source} />
+      <RepPerformance repId={user.id} range={range} sourceId={sourceId} />
 
       <section className="mt-8">
         <div className="mb-3 flex items-end justify-between gap-3">
@@ -52,7 +53,7 @@ export default async function SalesDashboard({
             All leads <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <LeadsTable leads={recent} />
+        <LeadsTable leads={recent} sourceNames={names} />
       </section>
     </div>
   );

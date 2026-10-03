@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Mail } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getLeads, getUserById } from "@/lib/data";
+import { getLeadSources, getLeads, getUserById } from "@/lib/data";
 import { resolveFilters, type FilterParams } from "@/lib/periods";
 import {
-  SOURCE_OPTIONS,
   STATUS_OPTIONS,
-  resolveSource,
+  resolveSourceId,
   resolveStatus,
+  sourceNameMap,
+  sourceOptions,
 } from "@/lib/sales";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Pill } from "@/components/shared/pill";
@@ -31,11 +32,12 @@ export default async function AdminRepProfile({
 
   const sp = await searchParams;
   const { range, label } = resolveFilters(sp);
-  const source = resolveSource(sp.source);
+  const sources = await getLeadSources(true);
+  const sourceId = resolveSourceId(sp.source, sources);
   const leads = await getLeads({
     repId: id,
     range,
-    source,
+    sourceId,
     status: resolveStatus(sp.status),
   });
 
@@ -49,7 +51,7 @@ export default async function AdminRepProfile({
       </Link>
 
       <div className="mb-6 flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
-        <UserAvatar name={rep.name} className="h-16 w-16 text-xl" />
+        <UserAvatar name={rep.name} src={rep.avatarUrl} size={64} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold sm:text-3xl">{rep.name}</h1>
@@ -71,7 +73,7 @@ export default async function AdminRepProfile({
       <FilterBar showVerified={false} />
       <ParamPills
         param="source"
-        options={SOURCE_OPTIONS}
+        options={sourceOptions(sources)}
         allLabel="All sources"
         label="Source"
         className="-mt-2 mb-6"
@@ -80,7 +82,7 @@ export default async function AdminRepProfile({
         Showing {label}
       </p>
 
-      <RepPerformance repId={id} range={range} source={source} />
+      <RepPerformance repId={id} range={range} sourceId={sourceId} />
 
       <section className="mt-8">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -92,7 +94,11 @@ export default async function AdminRepProfile({
           </div>
           <ParamPills param="status" options={STATUS_OPTIONS} allLabel="All" />
         </div>
-        <LeadsTable leads={leads} editableCost />
+        <LeadsTable
+          leads={leads}
+          sourceNames={sourceNameMap(sources)}
+          editableCost
+        />
       </section>
     </div>
   );

@@ -1,12 +1,13 @@
 import { RefreshCw } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getLeads } from "@/lib/data";
+import { getLeadSources, getLeads } from "@/lib/data";
 import { resolveFilters, type FilterParams } from "@/lib/periods";
 import {
-  SOURCE_OPTIONS,
   STATUS_OPTIONS,
-  resolveSource,
+  resolveSourceId,
   resolveStatus,
+  sourceNameMap,
+  sourceOptions,
 } from "@/lib/sales";
 import { PageHeader } from "@/components/shared/page-header";
 import { FilterBar } from "@/components/admin/filter-bar";
@@ -21,10 +22,11 @@ export default async function MyLeadsPage({
   const user = await requireRole("sales_rep");
   const sp = await searchParams;
   const { range, label } = resolveFilters(sp);
+  const sources = await getLeadSources(true);
   const leads = await getLeads({
     repId: user.id,
     range,
-    source: resolveSource(sp.source),
+    sourceId: resolveSourceId(sp.source, sources),
     status: resolveStatus(sp.status),
   });
 
@@ -39,7 +41,7 @@ export default async function MyLeadsPage({
         <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p>
           Leads are created automatically from Granot when they&apos;re assigned
-          to you. Contact an admin if something looks wrong.
+          to you. These are sample leads until Granot is connected.
         </p>
       </div>
 
@@ -53,13 +55,13 @@ export default async function MyLeadsPage({
         />
         <ParamPills
           param="source"
-          options={SOURCE_OPTIONS}
+          options={sourceOptions(sources)}
           allLabel="All sources"
           label="Source"
         />
       </div>
 
-      <LeadsTable leads={leads} />
+      <LeadsTable leads={leads} sourceNames={sourceNameMap(sources)} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { addMonths, endOfMonth, format, parse, subMonths } from "date-fns";
+import { parseISO } from "date-fns";
 import {
   CalendarCheck,
   ChevronLeft,
@@ -10,11 +10,16 @@ import {
   Users,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { countLeadsBySource, getLeadCosts, getLeads } from "@/lib/data";
+import {
+  countLeadsBySource,
+  getLeadCosts,
+  getLeadSources,
+  getLeads,
+} from "@/lib/data";
 import { formatCurrency } from "@/lib/format";
+import { resolveWeek, shiftWeek, weekLabel } from "@/lib/weeks";
 import { PageHeader } from "@/components/shared/page-header";
 import { LeadCostsForm } from "@/components/sales/lead-costs-form";
-import type { LeadSource } from "@/types";
 
 export const metadata = { title: "Lead Costs" };
 
@@ -41,37 +46,35 @@ function SummaryRow({
 export default async function LeadCostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ week?: string }>;
 }) {
   await requireRole("admin");
-  const raw = (await searchParams).month;
-  const month =
-    raw && /^\d{4}-\d{2}$/.test(raw) ? raw : format(new Date(), "yyyy-MM");
-  const date = parse(month, "yyyy-MM", new Date());
-  const monthLabel = format(date, "MMMM yyyy");
-  const prevMonth = format(subMonths(date, 1), "yyyy-MM");
-  const nextMonth = format(addMonths(date, 1), "yyyy-MM");
+  const week = resolveWeek((await searchParams).week);
+  const label = weekLabel(week);
+  const prevWeek = shiftWeek(week, -1);
+  const nextWeek = shiftWeek(week, 1);
+  const weekEnd = shiftWeek(week, 1);
 
-  const [costs, previous, counts, leads] = await Promise.all([
-    getLeadCosts(month),
-    getLeadCosts(prevMonth),
-    countLeadsBySource(month),
-    getLeads({
-      range: {
-        from: `${month}-01`,
-        to: format(endOfMonth(date), "yyyy-MM-dd"),
-      },
-    }),
+  const [sources, costs, previous, counts, leads] = await Promise.all([
+    getLeadSources(false),
+    getLeadCosts(week),
+    getLeadCosts(prevWeek),
+    countLeadsBySource(week),
+    getLeads(),
   ]);
 
+  const weekLeads = leads.filter(
+    (l) => l.date >= week && parseISO(l.date) < parseISO(weekEnd),
+  );
   const toMap = (list: typeof costs) =>
-    Object.fromEntries(list.map((c) => [c.source, c.cost])) as Partial<
-      Record<LeadSource, number>
+    Object.fromEntries(list.map((c) => [c.sourceId, c.cost])) as Record<
+      string,
+      number
     >;
 
-  const actualSpend = leads.reduce((s, l) => s + l.leadCost, 0);
-  const overrides = leads.filter((l) => l.costOverridden).length;
-  const booked = leads.filter((l) => l.status === "booked").length;
+  const actualSpend = weekLeads.reduce((s, l) => s + l.leadCost, 0);
+  const overrides = weekLeads.filter((l) => l.costOverridden).length;
+  const booked = weekLeads.filter((l) => l.status === "booked").length;
 
   const navBtn =
     "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border bg-white text-foreground transition hover:border-foreground/30";
@@ -80,22 +83,22 @@ export default async function LeadCostsPage({
     <div>
       <PageHeader
         title="Lead Costs"
-        description="Set how much each lead source costs per month."
+        description="Set how much each lead source costs per week (Monday to Sunday)."
         actions={
           <div className="flex w-full items-center gap-2 rounded-xl border bg-white p-1.5 sm:w-auto">
             <Link
-              href={`/admin/sales/lead-costs?month=${prevMonth}`}
-              aria-label="Previous month"
+              href={`/admin/sales/lead-costs?week=${prevWeek}`}
+              aria-label="Previous week"
               className={navBtn}
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <p className="min-w-[160px] flex-1 text-center font-heading text-lg font-bold">
-              {monthLabel}
+            <p className="min-w-[190px] flex-1 text-center font-heading text-base font-bold sm:text-lg">
+              {label}
             </p>
             <Link
-              href={`/admin/sales/lead-costs?month=${nextMonth}`}
-              aria-label="Next month"
+              href={`/admin/sales/lead-costs?week=${nextWeek}`}
+              aria-label="Next week"
               className={navBtn}
             >
               <ChevronRight className="h-5 w-5" />
@@ -106,25 +109,24 @@ export default async function LeadCostsPage({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <LeadCostsForm
-          key={month}
-          month={month}
-          monthLabel={monthLabel}
+          key={week}
+          week={week}
+          weekLabel={label}
+          sources={sources.map((s) => ({ id: s.id, name: s.name }))}
           costs={toMap(costs)}
           previousCosts={toMap(previous)}
           leadCounts={counts}
         />
 
-        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+        <aside className="space-y-4">
           <div className="rounded-2xl border bg-card p-4 sm:p-5">
-            <h2 className="text-lg font-bold">{monthLabel}</h2>
-            <p className="text-sm text-muted-foreground">
-              Based on saved costs and overrides
-            </p>
+            <h2 className="text-lg font-bold">This week</h2>
+            <p className="text-sm text-muted-foreground">{label}</p>
             <div className="mt-2 divide-y">
               <SummaryRow
                 icon={Users}
                 label="Leads"
-                value={String(leads.length)}
+                value={String(weekLeads.length)}
               />
               <SummaryRow
                 icon={CalendarCheck}
@@ -144,22 +146,19 @@ export default async function LeadCostsPage({
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-secondary p-4 text-white sm:p-5">
+          <div className="rounded-2xl bg-secondary p-4 text-white sm:p-5">
             <p className="flex items-center gap-2 font-semibold">
               <Info className="h-4 w-4 text-primary" /> How it works
             </p>
             <ul className="mt-3 space-y-2 text-sm text-white/70">
               <li>
-                Each lead gets its source&apos;s cost for the month it came in.
+                Each lead gets its source&apos;s cost for the week it came in.
               </li>
               <li>
-                Changing a cost updates all of that month&apos;s leads right
+                Changing a cost updates all of that week&apos;s leads right
                 away.
               </li>
-              <li>
-                Leads with a manual override keep their own cost. Reset them
-                from the rep&apos;s lead list.
-              </li>
+              <li>Leads with a manual override keep their own cost.</li>
             </ul>
           </div>
         </aside>

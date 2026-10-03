@@ -1,4 +1,7 @@
 import {
+  endOfMonth,
+  endOfQuarter,
+  endOfYear,
   format,
   isValid,
   parseISO,
@@ -28,6 +31,22 @@ const iso = (d: Date) => format(d, "yyyy-MM-dd");
 const validDate = (s?: string) =>
   !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && isValid(parseISO(s));
 
+/** "Oct 1 – Oct 31, 2026" (year shown once when both dates share it) */
+export function formatRange(from: string, to: string) {
+  const a = parseISO(from);
+  const b = parseISO(to);
+  if (a.getFullYear() === b.getFullYear()) {
+    return `${format(a, "MMM d")} – ${format(b, "MMM d, yyyy")}`;
+  }
+  return `${format(a, "MMM d, yyyy")} – ${format(b, "MMM d, yyyy")}`;
+}
+
+/** Default dates for the Custom period: this month */
+export function defaultCustomRange() {
+  const now = new Date();
+  return { from: iso(startOfMonth(now)), to: iso(endOfMonth(now)) };
+}
+
 export function resolveFilters(sp: FilterParams) {
   const now = new Date();
   const period = (
@@ -36,26 +55,30 @@ export function resolveFilters(sp: FilterParams) {
 
   let range: DateRange | undefined;
   if (period === "month")
-    range = { from: iso(startOfMonth(now)), to: iso(now) };
+    range = { from: iso(startOfMonth(now)), to: iso(endOfMonth(now)) };
   else if (period === "quarter")
-    range = { from: iso(startOfQuarter(now)), to: iso(now) };
+    range = { from: iso(startOfQuarter(now)), to: iso(endOfQuarter(now)) };
   else if (period === "year")
-    range = { from: iso(startOfYear(now)), to: iso(now) };
+    range = { from: iso(startOfYear(now)), to: iso(endOfYear(now)) };
   else if (period === "custom") {
+    const d = defaultCustomRange();
     range = {
-      from: validDate(sp.from) ? sp.from : undefined,
-      to: validDate(sp.to) ? sp.to : undefined,
+      from: validDate(sp.from) ? sp.from : d.from,
+      to: validDate(sp.to) ? sp.to : d.to,
     };
   }
 
+  const rangeText =
+    range?.from && range?.to ? formatRange(range.from, range.to) : "All dates";
+  const name = PERIOD_OPTIONS.find((p) => p.key === period)!.label;
   const label =
-    period === "custom"
-      ? `${range?.from ? format(parseISO(range.from), "MMM d, yyyy") : "Start"} – ${
-          range?.to ? format(parseISO(range.to), "MMM d, yyyy") : "Today"
-        }`
-      : PERIOD_OPTIONS.find((p) => p.key === period)!.label;
+    period === "all"
+      ? "All time"
+      : period === "custom"
+        ? rangeText
+        : `${name} · ${rangeText}`;
 
-  return { period, range, verifiedOnly: sp.verified === "1", label };
+  return { period, range, rangeText, verifiedOnly: sp.verified === "1", label };
 }
 
 export function filtersToQuery(sp: FilterParams) {

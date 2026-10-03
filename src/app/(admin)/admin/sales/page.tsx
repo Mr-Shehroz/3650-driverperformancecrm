@@ -9,6 +9,7 @@ import {
 import { requireRole } from "@/lib/auth/session";
 import {
   getAllRepMetrics,
+  getLeadSources,
   getRepMonthlyTrend,
   getReps,
   getSourceBreakdown,
@@ -19,9 +20,8 @@ import {
   resolveFilters,
   type FilterParams,
 } from "@/lib/periods";
-import { SOURCE_OPTIONS, resolveSource } from "@/lib/sales";
+import { resolveSourceId, sourceNameMap, sourceOptions } from "@/lib/sales";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { LEAD_SOURCE_LABELS } from "@/types";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { FilterBar } from "@/components/admin/filter-bar";
@@ -38,10 +38,12 @@ export default async function AdminSalesPage({
   await requireRole("admin");
   const sp = await searchParams;
   const { range, label } = resolveFilters(sp);
-  const source = resolveSource(sp.source);
+  const sources = await getLeadSources(true);
+  const sourceId = resolveSourceId(sp.source, sources);
+  const names = sourceNameMap(sources);
 
   const [metrics, reps, breakdown, trend] = await Promise.all([
-    getAllRepMetrics({ range, source }),
+    getAllRepMetrics({ range, sourceId }),
     getReps(true),
     getSourceBreakdown({ range }),
     getRepMonthlyTrend(undefined, 6),
@@ -53,13 +55,13 @@ export default async function AdminSalesPage({
     active: active[m.repId] ?? false,
   }));
   const t = repTotals(metrics);
-  const exportQuery = `${filtersToQuery(sp)}${source ? `&source=${source}` : ""}`;
+  const exportQuery = `${filtersToQuery(sp)}${sourceId ? `&source=${sourceId}` : ""}`;
 
   return (
     <div>
       <PageHeader
         title="Sales Reps"
-        description={`${label}${source ? ` · ${LEAD_SOURCE_LABELS[source]}` : ""}`}
+        description={`${label}${sourceId ? ` · ${names[sourceId]}` : ""}`}
         actions={
           <a
             href={`/admin/sales/export?${exportQuery}`}
@@ -72,7 +74,7 @@ export default async function AdminSalesPage({
       <FilterBar showVerified={false} />
       <ParamPills
         param="source"
-        options={SOURCE_OPTIONS}
+        options={sourceOptions(sources)}
         allLabel="All sources"
         label="Source"
         className="-mt-2 mb-6"
@@ -119,7 +121,7 @@ export default async function AdminSalesPage({
           <RepsTable rows={rows} />
         </section>
 
-        <div className="grid gap-6 2xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
           <SourceBreakdown rows={breakdown} title="Company by lead source" />
           <MetricChart
             title="Company trend"
