@@ -200,20 +200,52 @@ export type Database = {
         Row: {
           cost: number;
           id: string;
-          month: string;
-          source: Database["public"]["Enums"]["lead_source"];
+          source_id: string;
+          updated_at: string;
+          week: string;
         };
         Insert: {
           cost: number;
           id?: string;
-          month: string;
-          source: Database["public"]["Enums"]["lead_source"];
+          source_id: string;
+          updated_at?: string;
+          week: string;
         };
         Update: {
           cost?: number;
           id?: string;
-          month?: string;
-          source?: Database["public"]["Enums"]["lead_source"];
+          source_id?: string;
+          updated_at?: string;
+          week?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "lead_costs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "lead_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      lead_sources: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
         };
         Relationships: [];
       };
@@ -225,11 +257,12 @@ export type Database = {
           date: string;
           granot_id: string;
           id: string;
+          is_sample: boolean;
           job_value: number | null;
           lead_cost: number;
           raw: Json | null;
           rep_id: string | null;
-          source: Database["public"]["Enums"]["lead_source"];
+          source_id: string;
           status: Database["public"]["Enums"]["lead_status"];
           updated_at: string;
         };
@@ -240,11 +273,12 @@ export type Database = {
           date: string;
           granot_id: string;
           id?: string;
+          is_sample?: boolean;
           job_value?: number | null;
           lead_cost?: number;
           raw?: Json | null;
           rep_id?: string | null;
-          source?: Database["public"]["Enums"]["lead_source"];
+          source_id: string;
           status?: Database["public"]["Enums"]["lead_status"];
           updated_at?: string;
         };
@@ -255,11 +289,12 @@ export type Database = {
           date?: string;
           granot_id?: string;
           id?: string;
+          is_sample?: boolean;
           job_value?: number | null;
           lead_cost?: number;
           raw?: Json | null;
           rep_id?: string | null;
-          source?: Database["public"]["Enums"]["lead_source"];
+          source_id?: string;
           status?: Database["public"]["Enums"]["lead_status"];
           updated_at?: string;
         };
@@ -267,6 +302,90 @@ export type Database = {
           {
             foreignKeyName: "leads_rep_id_fkey";
             columns: ["rep_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leads_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "lead_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      maintenance_tickets: {
+        Row: {
+          created_at: string;
+          driver_id: string;
+          fix_note: string | null;
+          id: string;
+          inspection_id: string;
+          item_key: string;
+          notes: string | null;
+          photo_paths: string[];
+          severity: Database["public"]["Enums"]["truck_status"];
+          status: Database["public"]["Enums"]["ticket_status"];
+          truck_id: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          driver_id: string;
+          fix_note?: string | null;
+          id?: string;
+          inspection_id: string;
+          item_key: string;
+          notes?: string | null;
+          photo_paths?: string[];
+          severity: Database["public"]["Enums"]["truck_status"];
+          status?: Database["public"]["Enums"]["ticket_status"];
+          truck_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          driver_id?: string;
+          fix_note?: string | null;
+          id?: string;
+          inspection_id?: string;
+          item_key?: string;
+          notes?: string | null;
+          photo_paths?: string[];
+          severity?: Database["public"]["Enums"]["truck_status"];
+          status?: Database["public"]["Enums"]["ticket_status"];
+          truck_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_tickets_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "maintenance_tickets_inspection_id_fkey";
+            columns: ["inspection_id"];
+            isOneToOne: false;
+            referencedRelation: "pre_trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "maintenance_tickets_truck_id_fkey";
+            columns: ["truck_id"];
+            isOneToOne: false;
+            referencedRelation: "trucks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "maintenance_tickets_updated_by_fkey";
+            columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -347,6 +466,69 @@ export type Database = {
             columns: ["job_id"];
             isOneToOne: false;
             referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pre_trips: {
+        Row: {
+          captured_at_device: string;
+          driver_id: string;
+          id: string;
+          items: Json;
+          lat: number | null;
+          lng: number | null;
+          notes: string | null;
+          odometer: number;
+          received_at_server: string;
+          signature_path: string;
+          synced_offline: boolean;
+          truck_id: string;
+          truck_status: Database["public"]["Enums"]["truck_status"];
+        };
+        Insert: {
+          captured_at_device: string;
+          driver_id: string;
+          id?: string;
+          items: Json;
+          lat?: number | null;
+          lng?: number | null;
+          notes?: string | null;
+          odometer: number;
+          received_at_server?: string;
+          signature_path: string;
+          synced_offline?: boolean;
+          truck_id: string;
+          truck_status: Database["public"]["Enums"]["truck_status"];
+        };
+        Update: {
+          captured_at_device?: string;
+          driver_id?: string;
+          id?: string;
+          items?: Json;
+          lat?: number | null;
+          lng?: number | null;
+          notes?: string | null;
+          odometer?: number;
+          received_at_server?: string;
+          signature_path?: string;
+          synced_offline?: boolean;
+          truck_id?: string;
+          truck_status?: Database["public"]["Enums"]["truck_status"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pre_trips_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pre_trips_truck_id_fkey";
+            columns: ["truck_id"];
+            isOneToOne: false;
+            referencedRelation: "trucks";
             referencedColumns: ["id"];
           },
         ];
@@ -444,23 +626,96 @@ export type Database = {
           },
         ];
       };
+      roadside_inspections: {
+        Row: {
+          created_at: string;
+          date: string;
+          driver_id: string;
+          id: string;
+          location: string;
+          logged_by: string | null;
+          report_name: string | null;
+          report_path: string | null;
+          report_type: string | null;
+          result: Database["public"]["Enums"]["roadside_result"];
+          state: string;
+          truck_id: string;
+          violation_notes: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          date: string;
+          driver_id: string;
+          id?: string;
+          location: string;
+          logged_by?: string | null;
+          report_name?: string | null;
+          report_path?: string | null;
+          report_type?: string | null;
+          result: Database["public"]["Enums"]["roadside_result"];
+          state: string;
+          truck_id: string;
+          violation_notes?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          date?: string;
+          driver_id?: string;
+          id?: string;
+          location?: string;
+          logged_by?: string | null;
+          report_name?: string | null;
+          report_path?: string | null;
+          report_type?: string | null;
+          result?: Database["public"]["Enums"]["roadside_result"];
+          state?: string;
+          truck_id?: string;
+          violation_notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "roadside_inspections_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "roadside_inspections_logged_by_fkey";
+            columns: ["logged_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "roadside_inspections_truck_id_fkey";
+            columns: ["truck_id"];
+            isOneToOne: false;
+            referencedRelation: "trucks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       settings: {
         Row: {
           company: Json;
           damage_alert_emails: string[];
           id: number;
+          scoring: Json;
           updated_at: string;
         };
         Insert: {
           company: Json;
           damage_alert_emails?: string[];
           id?: number;
+          scoring?: Json;
           updated_at?: string;
         };
         Update: {
           company?: Json;
           damage_alert_emails?: string[];
           id?: number;
+          scoring?: Json;
           updated_at?: string;
         };
         Relationships: [];
@@ -493,6 +748,45 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      trucks: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          description: string | null;
+          id: string;
+          last_inspection_at: string | null;
+          odometer: number | null;
+          plate: string | null;
+          status: Database["public"]["Enums"]["truck_status"];
+          unit_number: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          last_inspection_at?: string | null;
+          odometer?: number | null;
+          plate?: string | null;
+          status?: Database["public"]["Enums"]["truck_status"];
+          unit_number: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          last_inspection_at?: string | null;
+          odometer?: number | null;
+          plate?: string | null;
+          status?: Database["public"]["Enums"]["truck_status"];
+          unit_number?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       upsells: {
         Row: {
@@ -547,6 +841,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_clear_sample_leads: { Args: never; Returns: number };
       admin_correct_pre_damage: {
         Args: {
           p_customer_name: string;
@@ -559,6 +854,11 @@ export type Database = {
         };
         Returns: string;
       };
+      admin_override_lead_cost: {
+        Args: { p_cost: number; p_lead: string };
+        Returns: string;
+      };
+      admin_seed_sample_leads: { Args: never; Returns: number };
       admin_set_deleted: {
         Args: {
           p_deleted: boolean;
@@ -568,33 +868,32 @@ export type Database = {
         };
         Returns: string;
       };
-      admin_set_lead_cost: {
-        Args: {
-          p_cost: number;
-          p_month: string;
-          p_source: Database["public"]["Enums"]["lead_source"];
-        };
+      admin_set_weekly_cost: {
+        Args: { p_cost: number; p_source: string; p_week: string };
         Returns: number;
       };
       app_role: {
         Args: never;
         Returns: Database["public"]["Enums"]["user_role"];
       };
+      get_scoring: { Args: never; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
+      lead_cost_for: {
+        Args: { p_date: string; p_source: string };
+        Returns: number;
+      };
       new_deleted_is_null: { Args: { p: Json }; Returns: boolean };
       owns_job: { Args: { p_job: string }; Returns: boolean };
+      recalc_lead_costs: { Args: { p_source: string }; Returns: number };
+      seed_sample_leads_internal: { Args: never; Returns: number };
     };
     Enums: {
       delivered_by: "drs" | "partner";
-      lead_source:
-        | "google_ppc"
-        | "tv_ad"
-        | "google_lead"
-        | "direct"
-        | "referral"
-        | "other";
-      lead_status: "open" | "booked" | "lost";
+      lead_status: "open" | "booked";
       review_platform: "google" | "bbb" | "trustpilot" | "facebook" | "other";
+      roadside_result: "clean" | "violations" | "out_of_service";
+      ticket_status: "open" | "in_progress" | "fixed";
+      truck_status: "safe" | "repair_soon" | "do_not_drive";
       upsell_type: "packing" | "storage" | "materials" | "other";
       user_role: "admin" | "driver" | "sales_rep";
     };
@@ -728,16 +1027,11 @@ export const Constants = {
   public: {
     Enums: {
       delivered_by: ["drs", "partner"],
-      lead_source: [
-        "google_ppc",
-        "tv_ad",
-        "google_lead",
-        "direct",
-        "referral",
-        "other",
-      ],
-      lead_status: ["open", "booked", "lost"],
+      lead_status: ["open", "booked"],
       review_platform: ["google", "bbb", "trustpilot", "facebook", "other"],
+      roadside_result: ["clean", "violations", "out_of_service"],
+      ticket_status: ["open", "in_progress", "fixed"],
+      truck_status: ["safe", "repair_soon", "do_not_drive"],
       upsell_type: ["packing", "storage", "materials", "other"],
       user_role: ["admin", "driver", "sales_rep"],
     },

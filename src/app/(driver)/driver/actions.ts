@@ -1,3 +1,6 @@
+// File: src/app/(driver)/driver/actions.ts
+// (REPLACE the whole file)
+
 "use server";
 
 import { redirect } from "next/navigation";
@@ -10,23 +13,15 @@ import {
   createUpsellFor,
   setOnTimeFor,
 } from "@/lib/services/driver";
-import type {
-  DamageInput,
-  NewJobInput,
-  OnTimeInput,
-  PreDamageInput,
-  ReviewInput,
-  UpsellInput,
-} from "@/lib/validation/driver";
 
+// Inputs are checked on the server, so they arrive as `unknown`.
+// Images arrive as storage paths (uploaded from the phone first).
 export type ActionResult = {
   error?: string;
   fieldErrors?: Record<string, string>;
 } | void;
 
-export async function createJobAction(
-  input: NewJobInput,
-): Promise<ActionResult> {
+export async function createJobAction(input: unknown): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await createJobFor(user, input);
   if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
@@ -34,7 +29,7 @@ export async function createJobAction(
 }
 
 export async function createPreDamageAction(
-  input: PreDamageInput,
+  input: unknown,
 ): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await createPreDamageFor(user, input);
@@ -43,7 +38,7 @@ export async function createPreDamageAction(
 }
 
 export async function createDamageAction(
-  input: DamageInput,
+  input: unknown,
 ): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await createDamageFor(user, input);
@@ -52,7 +47,7 @@ export async function createDamageAction(
 }
 
 export async function createReviewAction(
-  input: ReviewInput,
+  input: unknown,
 ): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await createReviewFor(user, input);
@@ -61,7 +56,7 @@ export async function createReviewAction(
 }
 
 export async function createUpsellAction(
-  input: UpsellInput,
+  input: unknown,
 ): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await createUpsellFor(user, input);
@@ -69,9 +64,7 @@ export async function createUpsellAction(
   redirect(`/driver/jobs/${res.jobId}`);
 }
 
-export async function setOnTimeAction(
-  input: OnTimeInput,
-): Promise<ActionResult> {
+export async function setOnTimeAction(input: unknown): Promise<ActionResult> {
   const user = await requireRole("driver");
   const res = await setOnTimeFor(user, input);
   if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };

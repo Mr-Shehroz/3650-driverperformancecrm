@@ -1,7 +1,10 @@
+// File: src/lib/image.ts
+// (REPLACE the whole file)
+
 export async function compressImage(
   file: File,
-  maxDim = 1600,
-  quality = 0.82,
+  maxDim = 2048,
+  quality = 0.85,
 ): Promise<string> {
   const url = URL.createObjectURL(file);
   try {

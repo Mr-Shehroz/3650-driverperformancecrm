@@ -1,5 +1,8 @@
+// File: public/sw.js
+// (REPLACE the whole file)
+
 /* DRS Performance Portal service worker */
-const VERSION = "drs-v3";
+const VERSION = "drs-v4"; // change this on every big release so phones drop old saved files
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const SHELL_CACHE = `${VERSION}-shell`;
@@ -8,12 +11,16 @@ const SHELL_URL = "/driver-offline";
 
 // Matches /_next/static/... asset paths inside HTML and CSS
 const ASSET_RE = /\/_next\/static\/[^"'\\\s)]+/g;
+// Images from /public used by the offline pages (logo, icons)
+const IMG_RE =
+  /(?:src|href)="(\/(?!_next\/)[^"?]+\.(?:png|jpg|jpeg|svg|webp|ico))"/g;
+const ALWAYS = ["/logo.webp"];
 
 /** Caches the offline app + offline page and every script/style/font they need */
 async function precacheShell() {
   const shell = await caches.open(SHELL_CACHE);
   const staticCache = await caches.open(STATIC_CACHE);
-  const assets = new Set();
+  const assets = new Set(ALWAYS);
 
   for (const url of [OFFLINE_URL, SHELL_URL]) {
     const res = await fetch(url, {
@@ -24,6 +31,7 @@ async function precacheShell() {
     const html = await res.clone().text();
     await shell.put(url, res);
     (html.match(ASSET_RE) || []).forEach((a) => assets.add(a));
+    for (const m of html.matchAll(IMG_RE)) assets.add(m[1]);
   }
 
   // CSS files point to font files, cache those too
@@ -106,15 +114,23 @@ self.addEventListener("fetch", (event) => {
   )
     return;
 
-  // Static files: cache first
+  // Next.js build files never change (new deploy = new file name): cache first
+  // Other files (logo, icons) can change: show saved copy, update it in the background
   if (isStaticAsset(url)) {
+    const hashed = url.pathname.startsWith("/_next/static/");
     event.respondWith(
       caches.open(STATIC_CACHE).then(async (cache) => {
         const cached = await cache.match(req);
-        if (cached) return cached;
-        const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
-        return res;
+        const network = () =>
+          fetch(req).then((res) => {
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          });
+        if (cached) {
+          if (!hashed) event.waitUntil(network().catch(() => {}));
+          return cached;
+        }
+        return network();
       }),
     );
     return;

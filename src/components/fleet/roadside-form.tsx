@@ -1,3 +1,6 @@
+// File: src/components/fleet/roadside-form.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -15,7 +18,6 @@ import { FormActions } from "@/components/driver/form-actions";
 import { US_STATES } from "@/lib/constants";
 import { createRoadsideAction } from "@/app/(driver)/driver/fleet-actions";
 import { createRoadsideAdminAction } from "@/app/(admin)/admin/fleet-actions";
-import type { RoadsideInput } from "@/lib/validation/fleet";
 import { ROADSIDE_RESULT_LABELS, type RoadsideResult } from "@/types";
 import { ReportUpload, type ReportFile } from "./report-upload";
 
@@ -50,6 +52,7 @@ export function RoadsideForm({
   const [result, setResult] = useState<RoadsideResult | "">("");
   const [notes, setNotes] = useState("");
   const [report, setReport] = useState<ReportFile | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const clear = (k: string) =>
     errors[k] && setErrors((e) => ({ ...e, [k]: "" }));
@@ -57,6 +60,10 @@ export function RoadsideForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(undefined);
+    if (uploading) {
+      setFormError("Wait for the report to finish uploading.");
+      return;
+    }
     const payload = {
       driverId: mode === "admin" ? driverId : undefined,
       date,
@@ -65,8 +72,11 @@ export function RoadsideForm({
       truckId,
       result: result || undefined,
       violationNotes: notes.trim() || undefined,
-      report,
-    } as unknown as RoadsideInput;
+      // The file is already in private storage; send where it was saved
+      report: report
+        ? { name: report.name, type: report.type, path: report.path }
+        : null,
+    };
 
     startTransition(async () => {
       const res =
@@ -219,11 +229,15 @@ export function RoadsideForm({
           </Field>
         )}
         <Field label="Inspection report" optional>
-          <ReportUpload value={report} onChange={setReport} />
+          <ReportUpload
+            value={report}
+            onChange={setReport}
+            onBusyChange={setUploading}
+          />
         </Field>
       </FormSection>
 
-      <FormActions cancelHref={cancelHref} pending={pending}>
+      <FormActions cancelHref={cancelHref} pending={pending || uploading}>
         Save inspection
       </FormActions>
     </form>

@@ -1,66 +1,34 @@
+// File: src/app/(driver)/driver/fleet-actions.ts
+// (REPLACE the whole file)
+
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/session";
-import { createPreTrip, createRoadside, getTruck } from "@/lib/data";
-import {
-  preTripSchema,
-  roadsideSchema,
-  toPathErrors,
-  type PreTripInput,
-  type RoadsideInput,
-} from "@/lib/validation/fleet";
+import { createPreTripFor, createRoadsideFor } from "@/lib/services/fleet";
 
 export type FleetResult = {
   error?: string;
   fieldErrors?: Record<string, string>;
 } | void;
 
-function refresh() {
-  revalidatePath("/driver", "layout");
-  revalidatePath("/admin", "layout");
-}
+// Inputs are checked on the server, so they arrive as `unknown`.
+// Photos, signatures and reports arrive as storage paths (uploaded from the phone first).
 
 export async function createPreTripAction(
-  input: PreTripInput,
+  input: unknown,
 ): Promise<FleetResult> {
   const user = await requireRole("driver");
-  const parsed = preTripSchema.safeParse(input);
-  if (!parsed.success) return { fieldErrors: toPathErrors(parsed.error) };
-
-  const truck = await getTruck(parsed.data.truckId);
-  if (!truck || !truck.active)
-    return { fieldErrors: { truckId: "Choose an active truck" } };
-
-  const { signature, notes, ...rest } = parsed.data;
-  const inspection = await createPreTrip({
-    ...rest,
-    notes: notes || undefined,
-    signatureUrl: signature,
-    driverId: user.id,
-    syncedOffline: false,
-  });
-
-  refresh();
-  redirect(`/driver/pre-trip/${inspection.id}`);
+  const res = await createPreTripFor(user, input);
+  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
+  redirect(`/driver/pre-trip/${res.id}`);
 }
 
 export async function createRoadsideAction(
-  input: RoadsideInput,
+  input: unknown,
 ): Promise<FleetResult> {
   const user = await requireRole("driver");
-  const parsed = roadsideSchema.safeParse(input);
-  if (!parsed.success) return { fieldErrors: toPathErrors(parsed.error) };
-
-  const { driverId: _ignored, violationNotes, ...rest } = parsed.data;
-  await createRoadside({
-    ...rest,
-    violationNotes: violationNotes || undefined,
-    driverId: user.id,
-    loggedBy: user.id,
-  });
-
-  refresh();
+  const res = await createRoadsideFor(user, input);
+  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
   redirect("/driver/roadside");
 }

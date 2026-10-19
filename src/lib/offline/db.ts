@@ -1,7 +1,16 @@
+// File: src/lib/offline/db.ts
+// (REPLACE the whole file)
+
 import Dexie, { type EntityTable } from "dexie";
 
 export type OutboxType =
-  "job" | "pre_damage" | "damage" | "review" | "upsell" | "on_time";
+  | "job"
+  | "pre_damage"
+  | "damage"
+  | "review"
+  | "upsell"
+  | "on_time"
+  | "pre_trip";
 
 export interface OutboxItem {
   id: string; // unique per item; for "job" items this is the local job id
@@ -38,10 +47,19 @@ export type SnapshotJob = {
   deliveredBy: "drs" | "partner";
 };
 
+export type SnapshotTruck = {
+  id: string;
+  unitNumber: string;
+  description?: string;
+  status: "safe" | "repair_soon" | "do_not_drive";
+};
+
 export type DriverSnapshot = {
   user: { id: string; name: string };
   drivers: { id: string; name: string }[];
   jobs: SnapshotJob[];
+  /** Active trucks for the offline pre-trip check (older snapshots may not have it) */
+  trucks?: SnapshotTruck[];
 };
 
 class OfflineDB extends Dexie {

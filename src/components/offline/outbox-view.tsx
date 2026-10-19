@@ -1,3 +1,6 @@
+// File: src/components/offline/outbox-view.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
@@ -7,6 +10,7 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   DollarSign,
   Loader2,
@@ -40,6 +44,7 @@ const ICONS: Record<OutboxType, React.ElementType> = {
   review: Star,
   upsell: DollarSign,
   on_time: Clock,
+  pre_trip: ClipboardCheck,
 };
 
 export function OutboxView() {

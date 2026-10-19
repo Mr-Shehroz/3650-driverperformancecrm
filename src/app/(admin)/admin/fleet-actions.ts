@@ -1,3 +1,6 @@
+// File: src/app/(admin)/admin/fleet-actions.ts
+// (REPLACE the whole file)
+
 "use server";
 
 import { z } from "zod";
@@ -5,19 +8,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/session";
 import {
-  createRoadside,
-  getUserById,
   saveTruck,
   truckUnitExists,
   updateScoring,
   updateTicketStatus,
 } from "@/lib/data";
-import {
-  roadsideSchema,
-  scoringSchema,
-  toPathErrors,
-  type RoadsideInput,
-} from "@/lib/validation/fleet";
+import { scoringSchema, toPathErrors } from "@/lib/validation/fleet";
+import { createRoadsideFor } from "@/lib/services/fleet";
 import type { ScoringSettings, TicketStatus } from "@/types";
 
 export type FleetAdminResult = {
@@ -47,11 +44,18 @@ export async function saveTruckAction(
   if (await truckUnitExists(parsed.data.unitNumber, parsed.data.id)) {
     return { fieldErrors: { unitNumber: "This unit number already exists" } };
   }
-  await saveTruck({
-    ...parsed.data,
-    description: parsed.data.description || undefined,
-    plate: parsed.data.plate || undefined,
-  });
+  try {
+    await saveTruck({
+      ...parsed.data,
+      description: parsed.data.description || undefined,
+      plate: parsed.data.plate || undefined,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/already exists/i.test(msg))
+      return { fieldErrors: { unitNumber: msg } };
+    return { error: "Couldn't save the truck. Please try again." };
+  }
   refresh();
 }
 
@@ -66,32 +70,21 @@ export async function updateTicketStatusAction(
   if (status === "fixed" && (!fixNote || fixNote.trim().length < 3)) {
     return { error: "Add a short note about the fix." };
   }
-  const t = await updateTicketStatus(id, status, fixNote?.trim());
-  if (!t) return { error: "Ticket not found." };
+  try {
+    const t = await updateTicketStatus(id, status, fixNote?.trim());
+    if (!t) return { error: "Ticket not found." };
+  } catch {
+    return { error: "Couldn't update the ticket. Please try again." };
+  }
   refresh();
 }
 
 export async function createRoadsideAdminAction(
-  input: RoadsideInput,
+  input: unknown,
 ): Promise<FleetAdminResult> {
   const admin = await requireRole("admin");
-  const parsed = roadsideSchema.safeParse(input);
-  if (!parsed.success) return { fieldErrors: toPathErrors(parsed.error) };
-
-  const driver = parsed.data.driverId
-    ? await getUserById(parsed.data.driverId)
-    : null;
-  if (!driver || driver.role !== "driver")
-    return { fieldErrors: { driverId: "Choose a driver" } };
-
-  const { violationNotes, ...rest } = parsed.data;
-  await createRoadside({
-    ...rest,
-    driverId: driver.id,
-    violationNotes: violationNotes || undefined,
-    loggedBy: admin.id,
-  });
-  refresh();
+  const res = await createRoadsideFor(admin, input);
+  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
   redirect("/admin/roadside");
 }
 
@@ -101,6 +94,10 @@ export async function updateScoringAction(
   await requireRole("admin");
   const parsed = scoringSchema.safeParse(input);
   if (!parsed.success) return { fieldErrors: toPathErrors(parsed.error) };
-  await updateScoring(parsed.data);
+  try {
+    await updateScoring(parsed.data);
+  } catch {
+    return { error: "Couldn't save scoring. Please try again." };
+  }
   refresh();
 }

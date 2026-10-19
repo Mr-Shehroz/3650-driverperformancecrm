@@ -1,3 +1,6 @@
+// File: src/components/fleet/pre-trip-form.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -29,7 +32,9 @@ import {
   type CheckStatus,
   type TruckStatus,
 } from "@/types";
-import type { PreTripInput } from "@/lib/validation/fleet";
+import { preTripSchema } from "@/lib/validation/fleet";
+import { openOfflinePath, submitOrQueue } from "@/lib/offline/submit";
+import { toast } from "sonner";
 import { TruckStatusPill } from "./status-badges";
 import { cn } from "@/lib/utils";
 
@@ -121,10 +126,26 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
       capturedAtDevice: new Date().toISOString(),
       lat: geo.lat,
       lng: geo.lng,
-    } as unknown as PreTripInput;
+    };
+    const unit = trucks.find((t) => t.id === truckId)?.unitNumber;
 
     startTransition(async () => {
-      const res = await createPreTripAction(payload);
+      // Online: photos upload, then the inspection saves. No signal: saved on this phone.
+      const res = await submitOrQueue({
+        type: "pre_trip",
+        schema: preTripSchema,
+        payload,
+        jobRef: "pre-trip",
+        label: `Pre-trip check${unit ? ` · Unit ${unit}` : ""}`,
+        errorKeys: "path",
+        online: (data) => createPreTripAction(data),
+        afterQueue: () => {
+          toast.success(
+            "Inspection saved on this phone. It will upload when you're back online.",
+          );
+          openOfflinePath("/driver");
+        },
+      });
       if (res?.fieldErrors) {
         setErrors(res.fieldErrors);
         setFormError("Please fix the highlighted parts.");

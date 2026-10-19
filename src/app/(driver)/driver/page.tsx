@@ -1,3 +1,6 @@
+// File: src/app/(driver)/driver/page.tsx
+// (REPLACE the whole file)
+
 import Link from "next/link";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
@@ -19,6 +22,7 @@ import {
   getDriverJobSummaries,
   getDriverMetrics,
   getDrivers,
+  getTrucks,
 } from "@/lib/data";
 import { SnapshotSaver } from "@/components/driver/snapshot-saver";
 
@@ -30,10 +34,11 @@ export default async function DriverHome() {
     to: format(endOfMonth(now), "yyyy-MM-dd"),
   };
 
-  const [metrics, jobs, drivers] = await Promise.all([
+  const [metrics, jobs, drivers, trucks] = await Promise.all([
     getDriverMetrics(user.id, { range }),
     getDriverJobSummaries(user.id),
     getDrivers(),
+    getTrucks(false),
   ]);
   const recent = jobs.slice(0, 6);
   const firstName = user.name.split(" ")[0];
@@ -53,6 +58,13 @@ export default async function DriverHome() {
             destCity: j.destCity,
             destState: j.destState,
             deliveredBy: j.deliveredBy,
+          })),
+          // For the offline pre-trip check
+          trucks: trucks.map((t) => ({
+            id: t.id,
+            unitNumber: t.unitNumber,
+            description: t.description,
+            status: t.status,
           })),
         }}
       />

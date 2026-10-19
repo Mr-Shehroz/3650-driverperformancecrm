@@ -1,3 +1,6 @@
+// File: src/app/(admin)/admin/actions.ts
+// (REPLACE the whole file)
+
 "use server";
 
 import { z } from "zod";
@@ -22,9 +25,31 @@ import {
   renameLeadSource,
   setLeadSourceActive,
   removeLeadCost,
+  seedSampleLeads,
+  clearSampleLeads,
 } from "@/lib/data";
 import type { RecordKind } from "@/types";
 import { passwordRule } from "@/lib/validation/password";
+
+/** Turns a database error into a friendly message instead of an error page */
+async function attempt<T>(
+  fn: () => Promise<T>,
+): Promise<{ value?: T; error?: string }> {
+  try {
+    return { value: await fn() };
+  } catch (err) {
+    console.error(err);
+    const msg = err instanceof Error ? err.message : "";
+    // Messages written for people come from our database rules
+    if (
+      /reason is required|not allowed|cannot be changed|already recorded/i.test(
+        msg,
+      )
+    )
+      return { error: msg };
+    return { error: "Couldn't save. Please try again." };
+  }
+}
 
 export type AdminResult = {
   error?: string;
@@ -55,7 +80,10 @@ export async function toggleVerifiedAction(
   verified: boolean,
 ): Promise<AdminResult> {
   const admin = await requireRole("admin");
-  const rec = await setVerified(kind, id, verified, admin.id);
+  const { value: rec, error } = await attempt(() =>
+    setVerified(kind, id, verified, admin.id),
+  );
+  if (error) return { error };
   if (!rec) return { error: "Record not found." };
   revalidateJob(rec.jobId);
 }
@@ -69,7 +97,10 @@ export async function deleteRecordAction(
   if (!KINDS.includes(kind)) return { error: "Invalid record type." };
   if (!reason || reason.trim().length < 3)
     return { error: "A reason is required to delete a record." };
-  const rec = await softDeleteRecord(kind, id, admin.id, reason.trim());
+  const { value: rec, error } = await attempt(() =>
+    softDeleteRecord(kind, id, admin.id, reason.trim()),
+  );
+  if (error) return { error };
   if (!rec) return { error: "Record not found." };
   revalidateJob(rec.jobId);
 }
@@ -80,7 +111,10 @@ export async function restoreRecordAction(
 ): Promise<AdminResult> {
   const admin = await requireRole("admin");
   if (!KINDS.includes(kind)) return { error: "Invalid record type." };
-  const rec = await restoreRecord(kind, id, admin.id);
+  const { value: rec, error } = await attempt(() =>
+    restoreRecord(kind, id, admin.id),
+  );
+  if (error) return { error };
   if (!rec) return { error: "Record not found." };
   revalidateJob(rec.jobId);
 }
@@ -109,12 +143,15 @@ export async function correctPreDamageAction(
   if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
 
   const { id, reason, notes, ...fields } = parsed.data;
-  const rec = await updatePreDamage(
-    id,
-    { ...fields, notes: notes || undefined },
-    admin.id,
-    reason,
+  const { value: rec, error } = await attempt(() =>
+    updatePreDamage(
+      id,
+      { ...fields, notes: notes || undefined },
+      admin.id,
+      reason,
+    ),
   );
+  if (error) return { error };
   if (!rec) return { error: "Record not found." };
   revalidateJob(rec.jobId);
 }
@@ -134,7 +171,10 @@ export async function updateJobAction(
   if (!parsed.success) return { error: "Invalid job data." };
 
   const { id, ...patch } = parsed.data;
-  const job = await updateJob(id, patch, admin.id);
+  const { value: job, error } = await attempt(() =>
+    updateJob(id, patch, admin.id),
+  );
+  if (error) return { error };
   if (!job) return { error: "Job not found." };
   revalidateJob(job.id);
 }
@@ -164,11 +204,16 @@ export async function saveLeadCostsAction(
   if (!parsed.success) return { error: "Enter valid costs (0 or more)." };
 
   let affected = 0;
-  for (const c of parsed.data.costs) {
-    affected +=
-      c.cost === null
-        ? await removeLeadCost(c.sourceId, parsed.data.week)
-        : await upsertLeadCost(c.sourceId, parsed.data.week, c.cost);
+  try {
+    for (const c of parsed.data.costs) {
+      affected +=
+        c.cost === null
+          ? await removeLeadCost(c.sourceId, parsed.data.week)
+          : await upsertLeadCost(c.sourceId, parsed.data.week, c.cost);
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: "Couldn't save the costs. Please try again." };
   }
   revalidateSales();
   return { affected };
@@ -182,8 +227,12 @@ export async function overrideLeadCostAction(
   if (cost !== null && (!Number.isFinite(cost) || cost < 0 || cost > 100000)) {
     return { error: "Enter a valid cost." };
   }
-  const lead = await overrideLeadCost(leadId, cost);
-  if (!lead) return { error: "Lead not found." };
+  try {
+    const lead = await overrideLeadCost(leadId, cost);
+    if (!lead) return { error: "Lead not found." };
+  } catch {
+    return { error: "Couldn't save the cost. Please try again." };
+  }
   revalidateSales();
 }
 
@@ -203,7 +252,11 @@ export async function createLeadSourceAction(
   if (await leadSourceNameExists(parsed.data))
     return { fieldErrors: { name: "This source already exists" } };
 
-  await createLeadSource(parsed.data);
+  try {
+    await createLeadSource(parsed.data);
+  } catch {
+    return { error: "Couldn't add the source. Please try again." };
+  }
   revalidateSales();
 }
 
@@ -218,8 +271,12 @@ export async function renameLeadSourceAction(
   if (await leadSourceNameExists(parsed.data, id))
     return { fieldErrors: { name: "This source already exists" } };
 
-  const row = await renameLeadSource(id, parsed.data);
-  if (!row) return { error: "Source not found." };
+  try {
+    const row = await renameLeadSource(id, parsed.data);
+    if (!row) return { error: "Source not found." };
+  } catch {
+    return { error: "Couldn't rename the source. Please try again." };
+  }
   revalidateSales();
 }
 
@@ -228,9 +285,42 @@ export async function setLeadSourceActiveAction(
   active: boolean,
 ): Promise<AdminResult> {
   await requireRole("admin");
-  const row = await setLeadSourceActive(id, active);
-  if (!row) return { error: "Source not found." };
+  try {
+    const row = await setLeadSourceActive(id, active);
+    if (!row) return { error: "Source not found." };
+  } catch {
+    return { error: "Couldn't update the source. Please try again." };
+  }
   revalidateSales();
+}
+
+/** Sample leads for reviewing the sales screens before Granot is connected */
+export async function seedSampleLeadsAction(): Promise<{
+  error?: string;
+  count?: number;
+}> {
+  await requireRole("admin");
+  try {
+    const count = await seedSampleLeads();
+    revalidateSales();
+    return { count };
+  } catch {
+    return { error: "Couldn't add sample leads. Please try again." };
+  }
+}
+
+export async function clearSampleLeadsAction(): Promise<{
+  error?: string;
+  count?: number;
+}> {
+  await requireRole("admin");
+  try {
+    const count = await clearSampleLeads();
+    revalidateSales();
+    return { count };
+  } catch {
+    return { error: "Couldn't remove sample leads. Please try again." };
+  }
 }
 
 /* ---------- Users ---------- */
@@ -369,11 +459,14 @@ export async function updateSettingsAction(
     }
     return { fieldErrors: out };
   }
-  await updateSettings({
-    ...parsed.data,
-    damageAlertEmails: Array.from(
-      new Set(parsed.data.damageAlertEmails.map((e) => e.toLowerCase())),
-    ),
-  });
+  const { error } = await attempt(() =>
+    updateSettings({
+      ...parsed.data,
+      damageAlertEmails: Array.from(
+        new Set(parsed.data.damageAlertEmails.map((e) => e.toLowerCase())),
+      ),
+    }),
+  );
+  if (error) return { error };
   revalidatePath("/admin/settings");
 }
