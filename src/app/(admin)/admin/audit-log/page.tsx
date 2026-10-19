@@ -1,3 +1,6 @@
+// File: src/app/(admin)/admin/audit-log/page.tsx
+// (REPLACE the whole file)
+
 import Link from "next/link";
 import { ScrollText } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
@@ -5,8 +8,8 @@ import { getAllJobs, getAuditLog, getUsers } from "@/lib/data";
 import {
   ACTION_LABELS,
   ENTITY_LABELS,
+  createdLines,
   diffLines,
-  formatAuditValue,
 } from "@/lib/audit";
 import { formatDateTimeET } from "@/lib/format";
 import { PageHeader } from "@/components/shared/page-header";
@@ -78,15 +81,15 @@ export default async function AuditLogPage() {
 
               {a.action === "create" && a.after ? (
                 <ul className="mt-2 grid gap-x-6 gap-y-0.5 text-sm sm:grid-cols-2">
-                  {Object.entries(a.after).map(([k, v]) => (
-                    <li key={k} className="truncate text-muted-foreground">
+                  {createdLines(a.after).map((d) => (
+                    <li
+                      key={d.field}
+                      className="truncate text-muted-foreground"
+                    >
                       <span className="font-medium text-foreground">
-                        {k
-                          .replace(/([A-Z])/g, " $1")
-                          .replace(/^./, (c) => c.toUpperCase())}
-                        :
+                        {d.field}:
                       </span>{" "}
-                      {formatAuditValue(v)}
+                      {d.value}
                     </li>
                   ))}
                 </ul>

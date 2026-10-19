@@ -1,5 +1,8 @@
+// File: src/components/sales/source-breakdown.tsx
+// (REPLACE the whole file)
+
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { LEAD_SOURCE_LABELS, type SourceBreakdownRow } from "@/types";
+import type { SourceBreakdownRow } from "@/types";
 
 export function SourceBreakdown({
   rows,
@@ -33,9 +36,9 @@ export function SourceBreakdown({
             </thead>
             <tbody className="divide-y tabular-nums">
               {rows.map((r) => (
-                <tr key={r.source}>
+                <tr key={r.sourceId}>
                   <td className="whitespace-nowrap px-5 py-3 font-semibold">
-                    {LEAD_SOURCE_LABELS[r.source]}
+                    {r.sourceName}
                   </td>
                   <td className="px-3 py-3 text-right">{r.leads}</td>
                   <td className="px-3 py-3 text-right">{r.booked}</td>

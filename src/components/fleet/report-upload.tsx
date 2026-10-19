@@ -1,41 +1,53 @@
+// File: src/components/fleet/report-upload.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useRef, useState } from "react";
 import { FileText, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
-import { compressImage } from "@/lib/image";
+import {
+  OfflineUploadError,
+  UploadRejectedError,
+  uploadRoadsideReport,
+  type UploadedReport,
+} from "@/lib/evidence/upload";
 
-export type ReportFile = { name: string; type: "image" | "pdf"; url?: string };
+/** A report that is already saved in private storage */
+export type ReportFile = UploadedReport;
 
 export function ReportUpload({
   value,
   onChange,
+  onBusyChange,
 }: {
   value: ReportFile | null;
   onChange: (v: ReportFile | null) => void;
+  /** Lets the form wait until the upload finishes */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+
+  const setBusyBoth = (v: boolean) => {
+    setBusy(v);
+    onBusyChange?.(v);
+  };
 
   const pick = async (file?: File) => {
     if (!file) return;
     if (file.size > 15 * 1024 * 1024)
       return toast.error("File is too large (max 15 MB).");
-    setBusy(true);
+    setBusyBoth(true);
     try {
-      if (file.type === "application/pdf")
-        onChange({ name: file.name, type: "pdf" });
-      else if (file.type.startsWith("image/"))
-        onChange({
-          name: file.name,
-          type: "image",
-          url: await compressImage(file),
-        });
-      else toast.error("Upload a PDF or a photo.");
-    } catch {
-      toast.error("Couldn't read that file.");
+      onChange(await uploadRoadsideReport(file));
+    } catch (err) {
+      if (err instanceof OfflineUploadError)
+        toast.error("No signal. Upload the report when you're back online.");
+      else if (err instanceof UploadRejectedError) toast.error(err.message);
+      else toast.error("Couldn't upload that file.");
     } finally {
-      setBusy(false);
+      setBusyBoth(false);
       if (ref.current) ref.current.value = "";
     }
   };
@@ -44,10 +56,10 @@ export function ReportUpload({
     <div>
       {value ? (
         <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
-          {value.type === "image" && value.url ? (
+          {value.type === "image" && value.preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={value.url}
+              src={value.preview}
               alt=""
               className="h-12 w-12 rounded-lg object-cover"
             />
@@ -59,7 +71,9 @@ export function ReportUpload({
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold">{value.name}</p>
             <p className="text-sm text-muted-foreground">
-              {value.type === "pdf" ? "PDF report" : "Photo of report"}
+              {value.type === "pdf"
+                ? "PDF report · uploaded"
+                : "Photo of report · uploaded"}
             </p>
           </div>
           <button
@@ -83,7 +97,7 @@ export function ReportUpload({
           ) : (
             <Paperclip className="h-5 w-5" />
           )}
-          Upload inspection report (PDF or photo)
+          {busy ? "Uploading…" : "Upload inspection report (PDF or photo)"}
         </button>
       )}
       <input

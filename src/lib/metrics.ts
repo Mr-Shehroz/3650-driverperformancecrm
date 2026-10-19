@@ -1,3 +1,6 @@
+// File: src/lib/metrics.ts
+// (REPLACE the whole file)
+
 import type { DriverMetrics, RepMetrics } from "@/types";
 
 const pct = (a: number, b: number) => (b === 0 ? 0 : a / b);
@@ -5,6 +8,7 @@ const pct = (a: number, b: number) => (b === 0 ? 0 : a / b);
 export function driverTotals(rows: DriverMetrics[]) {
   const jobs = rows.reduce((s, r) => s + r.jobs, 0);
   const damageCount = rows.reduce((s, r) => s + r.damageCount, 0);
+  const damagedJobs = rows.reduce((s, r) => s + r.damagedJobs, 0);
   const damageCost = rows.reduce((s, r) => s + r.damageCost, 0);
   const reviewCount = rows.reduce((s, r) => s + r.reviewCount, 0);
   const starSum = rows.reduce((s, r) => s + r.avgStars * r.reviewCount, 0);
@@ -18,7 +22,7 @@ export function driverTotals(rows: DriverMetrics[]) {
     jobs,
     damageCount,
     damageCost,
-    damageRate: pct(damageCount, jobs),
+    damageRate: pct(damagedJobs, jobs),
     reviewCount,
     avgStars: reviewCount ? starSum / reviewCount : 0,
     fiveStarRate: pct(fiveStars, reviewCount),

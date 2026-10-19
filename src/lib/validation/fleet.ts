@@ -1,3 +1,6 @@
+// File: src/lib/validation/fleet.ts
+// (REPLACE the whole file)
+
 import { z } from "zod";
 
 /** Field errors keyed by full path, e.g. "items.2.notes" */
@@ -77,9 +80,10 @@ export const roadsideSchema = z
     violationNotes: z.string().trim().max(1000).optional(),
     report: z
       .object({
-        name: z.string().min(1),
+        name: z.string().min(1).max(200),
         type: z.enum(["image", "pdf"]),
-        url: z.string().optional(),
+        /** Already uploaded to private storage */
+        path: z.string().min(1).max(300),
       })
       .nullable(),
   })
@@ -101,3 +105,55 @@ export const scoringSchema = z.object({
   violations: z.number().int().min(-100).max(0, "Use 0 or a negative number"),
   outOfService: z.number().int().min(-200).max(0, "Use 0 or a negative number"),
 });
+
+/* ---------- Server-side pre-trip (photos and signature already uploaded) ---------- */
+const storagePath = z.string().min(1).max(300);
+
+export const preTripServerSchema = z
+  .object({
+    truckId: z.string().min(1, "Choose a truck"),
+    odometer: z
+      .number({ message: "Enter the odometer reading" })
+      .int()
+      .min(0)
+      .max(5_000_000),
+    items: z
+      .array(
+        z.object({
+          key: z.enum([
+            "tires",
+            "fluids",
+            "lights",
+            "brakes",
+            "mirrors",
+            "equipment",
+          ]),
+          status: z.enum(["ok", "attention"], {
+            message: "Mark OK or Needs attention",
+          }),
+          notes: z.string().trim().max(500).optional(),
+          photos: z.array(storagePath).max(3, "Up to 3 photos"),
+        }),
+      )
+      .length(6),
+    truckStatus: z.enum(["safe", "repair_soon", "do_not_drive"], {
+      message: "Choose the truck status",
+    }),
+    notes: z.string().trim().max(1000).optional(),
+    signature: storagePath,
+    capturedAtDevice: z.string().min(1),
+    lat: z.number().nullable(),
+    lng: z.number().nullable(),
+  })
+  .superRefine((d, ctx) => {
+    d.items.forEach((it, i) => {
+      if (it.status === "attention" && !it.notes) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["items", i, "notes"],
+          message: "Describe the problem",
+        });
+      }
+    });
+  });
+export type PreTripServerInput = z.infer<typeof preTripServerSchema>;

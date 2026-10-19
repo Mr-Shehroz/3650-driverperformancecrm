@@ -1,3 +1,6 @@
+// File: src/lib/validation/driver.ts
+// (REPLACE the whole file)
+
 import { z } from "zod";
 import { MAX_PHOTOS } from "@/lib/constants";
 
@@ -111,3 +114,45 @@ export const onTimeSchema = z.object({
   value: z.boolean(),
 });
 export type OnTimeInput = z.infer<typeof onTimeSchema>;
+
+/* ---------- Server-side versions (images already uploaded to storage) ---------- */
+const storagePath = z.string().min(1).max(300);
+
+export const preDamageServerSchema = preDamageSchema.extend({
+  photos: z
+    .array(storagePath)
+    .min(1, "Add at least 1 photo")
+    .max(MAX_PHOTOS, `Maximum ${MAX_PHOTOS} photos`),
+  signature: storagePath,
+});
+export type PreDamageServerInput = z.infer<typeof preDamageServerSchema>;
+
+export const damageServerSchema = damageSchema.extend({
+  photos: z
+    .array(storagePath)
+    .min(1, "Add at least 1 photo")
+    .max(MAX_PHOTOS, `Maximum ${MAX_PHOTOS} photos`),
+});
+export type DamageServerInput = z.infer<typeof damageServerSchema>;
+
+export const reviewServerSchema = z
+  .object({
+    jobId: z.string().min(1),
+    platform: z.enum(["google", "bbb", "trustpilot", "facebook", "other"], {
+      message: "Select a platform",
+    }),
+    stars: z.number().int().min(1, "Select a star rating").max(5),
+    driverMentioned: z.boolean({ message: "Select yes or no" }),
+    link: z
+      .string()
+      .trim()
+      .url("Enter a valid link")
+      .optional()
+      .or(z.literal("")),
+    screenshot: storagePath.optional().or(z.literal("")),
+  })
+  .refine((d) => !!d.link || !!d.screenshot, {
+    message: "Add a link or a screenshot",
+    path: ["link"],
+  });
+export type ReviewServerInput = z.infer<typeof reviewServerSchema>;

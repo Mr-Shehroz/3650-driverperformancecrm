@@ -1,253 +1,103 @@
-import { format, subDays } from "date-fns";
-import * as db from "@/lib/mock/data";
-import { getDrivers } from "./users";
+// File: src/lib/data/fleet.ts
+// (REPLACE the whole file)
+
+import { createClient } from "@/lib/supabase/server";
+import { FLEET_BUCKET } from "@/lib/evidence/paths";
 import {
-  CHECK_ITEMS,
   ROADSIDE_RESULT_LABELS,
+  type CheckItemKey,
+  type CheckStatus,
   type DateRange,
   type DriverScore,
   type MaintenanceTicket,
   type PreTripInspection,
+  type PreTripItem,
   type RoadsideInspection,
   type RoadsideResult,
   type ScoringSettings,
   type TicketStatus,
   type Truck,
 } from "@/types";
+import type { Database } from "@/types/supabase";
 
-const PHOTO = (t: string) =>
-  `https://placehold.co/800x600/111111/ffffff.png?text=${encodeURIComponent(t)}`;
-const newId = (p: string) => `${p}-${crypto.randomUUID().slice(0, 8)}`;
-const inRange = (date: string, r?: DateRange) =>
-  (!r?.from || date >= r.from) && (!r?.to || date <= r.to);
+type Tables = Database["public"]["Tables"];
+type TruckRow = Tables["trucks"]["Row"];
+type PreTripRow = Tables["pre_trips"]["Row"];
+type TicketRow = Tables["maintenance_tickets"]["Row"];
+type RoadsideRow = Tables["roadside_inspections"]["Row"];
 
-/* ---------- Sample data for the real drivers (once) ---------- */
-async function ensureFleetSamples() {
-  if (db.sampleState.fleetSeeded) return;
-  const drivers = await getDrivers();
-  if (!drivers.length) return; // waits until at least one driver exists
-  db.sampleState.fleetSeeded = true;
+const SIGNED_URL_SECONDS = 60 * 60; // 1 hour
+const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
 
-  const d = (i: number) => drivers[i % drivers.length].id;
-  const now = new Date();
-  const at = (daysAgo: number, hour: number) => {
-    const x = subDays(now, daysAgo);
-    x.setHours(hour, 15, 0, 0);
-    return x.toISOString();
-  };
-  const ok = () =>
-    CHECK_ITEMS.map((c) => ({
-      key: c.key,
-      status: "ok" as const,
-      photos: [] as string[],
-    }));
+const DEFAULT_SCORING: ScoringSettings = {
+  baseScore: 100,
+  clean: 5,
+  violations: -10,
+  outOfService: -25,
+};
 
-  const p1: PreTripInspection = {
-    id: "pt-1",
-    truckId: "t-101",
-    driverId: d(0),
-    items: ok(),
-    odometer: 182340,
-    truckStatus: "safe",
-    signatureUrl: PHOTO("Signature"),
-    capturedAtDevice: at(1, 7),
-    receivedAtServer: at(1, 7),
-    lat: 26.1224,
-    lng: -80.1373,
-    syncedOffline: false,
-  };
-  const p2: PreTripInspection = {
-    id: "pt-2",
-    truckId: "t-102",
-    driverId: d(1),
-    odometer: 214980,
-    truckStatus: "repair_soon",
-    items: ok().map((it) =>
-      it.key === "tires"
-        ? {
-            ...it,
-            status: "attention" as const,
-            notes: "Rear left inner tire low on tread",
-            photos: [PHOTO("Tire")],
-          }
-        : it.key === "equipment"
-          ? {
-              ...it,
-              status: "attention" as const,
-              notes: "Missing 6 moving blankets and 1 strap",
-              photos: [],
-            }
-          : it,
-    ),
-    signatureUrl: PHOTO("Signature"),
-    capturedAtDevice: at(3, 6),
-    receivedAtServer: at(3, 8),
-    lat: 25.7617,
-    lng: -80.1918,
-    syncedOffline: true,
-  };
-  const p3: PreTripInspection = {
-    id: "pt-3",
-    truckId: "t-205",
-    driverId: d(0),
-    odometer: 401225,
-    truckStatus: "do_not_drive",
-    items: ok().map((it) =>
-      it.key === "brakes"
-        ? {
-            ...it,
-            status: "attention" as const,
-            notes: "Air pressure drops fast, warning light on",
-            photos: [PHOTO("Brake gauge")],
-          }
-        : it,
-    ),
-    notes: "Left the truck at the yard. Called dispatch.",
-    signatureUrl: PHOTO("Signature"),
-    capturedAtDevice: at(0, 6),
-    receivedAtServer: at(0, 6),
-    lat: 26.0112,
-    lng: -80.1495,
-    syncedOffline: false,
-  };
-  db.preTrips.push(p1, p2, p3);
-
-  db.tickets.push(
-    {
-      id: "mt-1",
-      truckId: "t-102",
-      inspectionId: "pt-2",
-      driverId: d(1),
-      itemKey: "tires",
-      notes: "Rear left inner tire low on tread",
-      photos: [PHOTO("Tire")],
-      severity: "repair_soon",
-      status: "in_progress",
-      createdAt: at(3, 8),
-      updatedAt: at(2, 10),
-    },
-    {
-      id: "mt-2",
-      truckId: "t-102",
-      inspectionId: "pt-2",
-      driverId: d(1),
-      itemKey: "equipment",
-      notes: "Missing 6 moving blankets and 1 strap",
-      photos: [],
-      severity: "repair_soon",
-      status: "fixed",
-      fixNote: "Restocked blankets and straps",
-      createdAt: at(3, 8),
-      updatedAt: at(2, 15),
-    },
-    {
-      id: "mt-3",
-      truckId: "t-205",
-      inspectionId: "pt-3",
-      driverId: d(0),
-      itemKey: "brakes",
-      notes: "Air pressure drops fast, warning light on",
-      photos: [PHOTO("Brake gauge")],
-      severity: "do_not_drive",
-      status: "open",
-      createdAt: at(0, 6),
-      updatedAt: at(0, 6),
-    },
-  );
-
-  const t = (id: string) => db.trucks.find((x) => x.id === id)!;
-  Object.assign(t("t-101"), {
-    status: "safe",
-    lastInspectionAt: p1.receivedAtServer,
+/** Private fleet files → short-lived links the browser can open */
+async function signPaths(
+  paths: (string | null | undefined)[],
+): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(paths.filter((p): p is string => !!p)));
+  const map = new Map<string, string>();
+  if (!unique.length) return map;
+  const sb = await createClient();
+  const { data } = await sb.storage
+    .from(FLEET_BUCKET)
+    .createSignedUrls(unique, SIGNED_URL_SECONDS);
+  (data ?? []).forEach((d) => {
+    if (d.path && d.signedUrl) map.set(d.path, d.signedUrl);
   });
-  Object.assign(t("t-102"), {
-    status: "repair_soon",
-    lastInspectionAt: p2.receivedAtServer,
-  });
-  Object.assign(t("t-205"), {
-    status: "do_not_drive",
-    lastInspectionAt: p3.receivedAtServer,
-  });
-
-  const day = (n: number) => format(subDays(now, n), "yyyy-MM-dd");
-  db.roadside.push(
-    {
-      id: "rs-1",
-      driverId: d(0),
-      truckId: "t-101",
-      date: day(4),
-      state: "GA",
-      location: "I-95 weigh station, Brunswick",
-      result: "clean",
-      report: { name: "inspection-GA.pdf", type: "pdf" },
-      loggedBy: d(0),
-      createdAt: at(4, 14),
-    },
-    {
-      id: "rs-2",
-      driverId: d(1),
-      truckId: "t-102",
-      date: day(12),
-      state: "SC",
-      location: "Hardeeville port of entry",
-      result: "violations",
-      violationNotes: "Logbook not current, one marker light out",
-      report: {
-        name: "inspection-SC.jpg",
-        type: "image",
-        url: PHOTO("Inspection report"),
-      },
-      loggedBy: d(1),
-      createdAt: at(12, 11),
-    },
-    {
-      id: "rs-3",
-      driverId: d(0),
-      truckId: "t-205",
-      date: day(20),
-      state: "NC",
-      location: "I-95 Rest Area, Rowland",
-      result: "clean",
-      report: null,
-      loggedBy: d(0),
-      createdAt: at(20, 9),
-    },
-    {
-      id: "rs-4",
-      driverId: d(2),
-      truckId: "t-205",
-      date: day(33),
-      state: "VA",
-      location: "Emporia weigh station",
-      result: "out_of_service",
-      violationNotes: "Brake adjustment out of limits on 2 axles",
-      report: { name: "OOS-report.pdf", type: "pdf" },
-      loggedBy: d(2),
-      createdAt: at(33, 16),
-    },
-  );
+  return map;
 }
 
-/* ---------- Trucks ---------- */
+/* =========================================================
+   Trucks
+   ========================================================= */
+const toTruck = (t: TruckRow): Truck => ({
+  id: t.id,
+  unitNumber: t.unit_number,
+  description: t.description ?? undefined,
+  plate: t.plate ?? undefined,
+  active: t.active,
+  status: t.status,
+  odometer: t.odometer,
+  lastInspectionAt: t.last_inspection_at,
+});
+
 export async function getTrucks(includeInactive = true): Promise<Truck[]> {
-  await ensureFleetSamples();
-  return db.trucks
-    .filter((t) => includeInactive || t.active)
+  const sb = await createClient();
+  let q = sb.from("trucks").select("*");
+  if (!includeInactive) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? [])
+    .map(toTruck)
     .sort((a, b) =>
       a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }),
     );
 }
 
 export async function getTruck(id: string): Promise<Truck | null> {
-  await ensureFleetSamples();
-  return db.trucks.find((t) => t.id === id) ?? null;
+  if (!isUuid(id)) return null;
+  const sb = await createClient();
+  const { data } = await sb
+    .from("trucks")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? toTruck(data) : null;
 }
 
 export async function truckUnitExists(unit: string, excludeId?: string) {
-  const u = unit.trim().toLowerCase();
-  return db.trucks.some(
-    (t) => t.unitNumber.toLowerCase() === u && t.id !== excludeId,
-  );
+  const sb = await createClient();
+  const exact = unit.trim().replace(/[\\%_]/g, (m) => `\\${m}`); // match the text exactly, ignoring case
+  let q = sb.from("trucks").select("id").ilike("unit_number", exact);
+  if (excludeId) q = q.neq("id", excludeId);
+  const { data } = await q.limit(1);
+  return !!data?.length;
 }
 
 export async function saveTruck(input: {
@@ -257,114 +107,191 @@ export async function saveTruck(input: {
   plate?: string;
   active: boolean;
 }): Promise<Truck> {
-  if (input.id) {
-    const t = db.trucks.find((x) => x.id === input.id);
-    if (t) {
-      Object.assign(t, {
-        unitNumber: input.unitNumber,
-        description: input.description,
-        plate: input.plate,
-        active: input.active,
-      });
-      return t;
-    }
-  }
-  const truck: Truck = {
-    id: newId("t"),
-    unitNumber: input.unitNumber,
-    description: input.description,
-    plate: input.plate,
+  const sb = await createClient();
+  const row = {
+    unit_number: input.unitNumber.trim(),
+    description: input.description || null,
+    plate: input.plate || null,
     active: input.active,
-    status: "safe",
-    odometer: null,
-    lastInspectionAt: null,
   };
-  db.trucks.push(truck);
-  return truck;
+  const { data, error } = input.id
+    ? await sb
+        .from("trucks")
+        .update(row)
+        .eq("id", input.id)
+        .select("*")
+        .single()
+    : await sb.from("trucks").insert(row).select("*").single();
+  if (error) {
+    if (error.code === "23505")
+      throw new Error("This unit number already exists");
+    throw error;
+  }
+  return toTruck(data);
 }
 
-/* ---------- Pre-trip inspections ---------- */
+/* =========================================================
+   Pre-trip inspections
+   ========================================================= */
+type StoredItem = {
+  key: CheckItemKey;
+  status: CheckStatus;
+  notes?: string | null;
+  photos?: string[];
+};
+
+async function toPreTrips(rows: PreTripRow[]): Promise<PreTripInspection[]> {
+  const itemsOf = (r: PreTripRow) => (r.items as unknown as StoredItem[]) ?? [];
+  const signed = await signPaths(
+    rows.flatMap((r) => [
+      r.signature_path,
+      ...itemsOf(r).flatMap((i) => i.photos ?? []),
+    ]),
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    truckId: r.truck_id,
+    driverId: r.driver_id,
+    items: itemsOf(r).map((i): PreTripItem => ({
+      key: i.key,
+      status: i.status,
+      notes: i.notes ?? undefined,
+      photos: (i.photos ?? []).map((p) => signed.get(p) ?? "").filter(Boolean),
+    })),
+    odometer: r.odometer,
+    truckStatus: r.truck_status,
+    notes: r.notes ?? undefined,
+    signatureUrl: signed.get(r.signature_path) ?? "",
+    capturedAtDevice: r.captured_at_device,
+    receivedAtServer: r.received_at_server,
+    lat: r.lat,
+    lng: r.lng,
+    syncedOffline: r.synced_offline,
+  }));
+}
+
 export async function getPreTrips(
-  opts: { driverId?: string; truckId?: string } = {},
+  opts: { driverId?: string; truckId?: string; limit?: number } = {},
 ): Promise<PreTripInspection[]> {
-  await ensureFleetSamples();
-  return db.preTrips
-    .filter(
-      (p) =>
-        (!opts.driverId || p.driverId === opts.driverId) &&
-        (!opts.truckId || p.truckId === opts.truckId),
-    )
-    .sort((a, b) => b.receivedAtServer.localeCompare(a.receivedAtServer));
+  const sb = await createClient();
+  let q = sb.from("pre_trips").select("*");
+  if (opts.driverId) q = q.eq("driver_id", opts.driverId);
+  if (opts.truckId) q = q.eq("truck_id", opts.truckId);
+  const { data, error } = await q
+    .order("received_at_server", { ascending: false })
+    .limit(opts.limit ?? 100);
+  if (error) throw error;
+  return toPreTrips(data ?? []);
 }
 
 export async function getPreTrip(
   id: string,
 ): Promise<PreTripInspection | null> {
-  await ensureFleetSamples();
-  return db.preTrips.find((p) => p.id === id) ?? null;
+  if (!isUuid(id)) return null;
+  const sb = await createClient();
+  const { data } = await sb
+    .from("pre_trips")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  return (await toPreTrips([data]))[0];
 }
 
-/** Saves the inspection, opens a ticket for every flagged item and updates the truck */
-export async function createPreTrip(
-  input: Omit<PreTripInspection, "id" | "receivedAtServer">,
-): Promise<PreTripInspection> {
-  const now = new Date().toISOString();
-  const inspection: PreTripInspection = {
-    ...input,
-    id: newId("pt"),
-    receivedAtServer: now,
-  };
-  db.preTrips.push(inspection);
-
-  const severity =
-    input.truckStatus === "safe" ? "repair_soon" : input.truckStatus;
-  for (const item of input.items.filter((i) => i.status === "attention")) {
-    db.tickets.push({
-      id: newId("mt"),
-      truckId: input.truckId,
-      inspectionId: inspection.id,
-      driverId: input.driverId,
-      itemKey: item.key,
-      notes: item.notes,
-      photos: item.photos,
-      severity,
-      status: "open",
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  const truck = db.trucks.find((t) => t.id === input.truckId);
-  if (truck)
-    Object.assign(truck, {
-      status: input.truckStatus,
+/**
+ * Saves a locked pre-trip inspection. The database then opens a maintenance
+ * ticket for every flagged item and updates the truck's status and odometer.
+ */
+export async function createPreTrip(input: {
+  truckId: string;
+  items: {
+    key: CheckItemKey;
+    status: CheckStatus;
+    notes?: string;
+    photos: string[];
+  }[];
+  odometer: number;
+  truckStatus: PreTripInspection["truckStatus"];
+  notes?: string;
+  signaturePath: string;
+  capturedAtDevice: string;
+  lat: number | null;
+  lng: number | null;
+  syncedOffline: boolean;
+  driverId: string;
+}): Promise<{ id: string }> {
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from("pre_trips")
+    .insert({
+      truck_id: input.truckId,
+      driver_id: input.driverId,
+      items: input.items.map((i) => ({
+        key: i.key,
+        status: i.status,
+        notes: i.notes ?? null,
+        photos: i.photos,
+      })),
       odometer: input.odometer,
-      lastInspectionAt: now,
-    });
-
-  // TODO (functionality milestone): email admins when truckStatus is "do_not_drive"
-  return inspection;
+      truck_status: input.truckStatus,
+      notes: input.notes || null,
+      signature_path: input.signaturePath,
+      captured_at_device: input.capturedAtDevice,
+      lat: input.lat,
+      lng: input.lng,
+      synced_offline: input.syncedOffline,
+      // received_at_server is set by the database
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { id: data.id };
 }
 
-/* ---------- Maintenance tickets ---------- */
+/* =========================================================
+   Maintenance tickets
+   ========================================================= */
+const RANK: Record<TicketStatus, number> = {
+  open: 0,
+  in_progress: 1,
+  fixed: 2,
+};
+
 export async function getTickets(
   opts: { status?: TicketStatus; truckId?: string; inspectionId?: string } = {},
 ): Promise<MaintenanceTicket[]> {
-  await ensureFleetSamples();
-  return db.tickets
-    .filter(
-      (t) =>
-        (!opts.status || t.status === opts.status) &&
-        (!opts.truckId || t.truckId === opts.truckId) &&
-        (!opts.inspectionId || t.inspectionId === opts.inspectionId),
-    )
-    .sort((a, b) => {
-      const rank = { open: 0, in_progress: 1, fixed: 2 };
-      return (
-        rank[a.status] - rank[b.status] ||
-        b.createdAt.localeCompare(a.createdAt)
-      );
-    });
+  const sb = await createClient();
+  let q = sb.from("maintenance_tickets").select("*");
+  if (opts.status) q = q.eq("status", opts.status);
+  if (opts.truckId) q = q.eq("truck_id", opts.truckId);
+  if (opts.inspectionId) q = q.eq("inspection_id", opts.inspectionId);
+  const { data, error } = await q
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+
+  const rows = (data ?? []) as TicketRow[];
+  const signed = await signPaths(rows.flatMap((t) => t.photo_paths));
+  return rows
+    .map((t) => ({
+      id: t.id,
+      truckId: t.truck_id,
+      inspectionId: t.inspection_id,
+      driverId: t.driver_id,
+      itemKey: t.item_key as CheckItemKey,
+      notes: t.notes ?? undefined,
+      photos: t.photo_paths.map((p) => signed.get(p) ?? "").filter(Boolean),
+      severity: t.severity,
+      status: t.status,
+      fixNote: t.fix_note ?? undefined,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    }))
+    .sort(
+      (a, b) =>
+        RANK[a.status] - RANK[b.status] ||
+        b.createdAt.localeCompare(a.createdAt),
+    );
 }
 
 export async function updateTicketStatus(
@@ -372,51 +299,112 @@ export async function updateTicketStatus(
   status: TicketStatus,
   fixNote?: string,
 ) {
-  const t = db.tickets.find((x) => x.id === id);
-  if (!t) return null;
-  Object.assign(t, {
-    status,
-    fixNote: status === "fixed" ? fixNote : t.fixNote,
-    updatedAt: new Date().toISOString(),
-  });
-  return t;
+  const sb = await createClient();
+  const patch: Tables["maintenance_tickets"]["Update"] = { status };
+  if (status === "fixed") patch.fix_note = fixNote ?? null;
+  const { data, error } = await sb
+    .from("maintenance_tickets")
+    .update(patch)
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
-/* ---------- Roadside inspections ---------- */
+/* =========================================================
+   Roadside (DOT) inspections
+   ========================================================= */
 export async function getRoadside(
   opts: { driverId?: string; truckId?: string; range?: DateRange } = {},
-) {
-  await ensureFleetSamples();
-  return db.roadside
-    .filter(
-      (r) =>
-        (!opts.driverId || r.driverId === opts.driverId) &&
-        (!opts.truckId || r.truckId === opts.truckId) &&
-        inRange(r.date, opts.range),
-    )
-    .sort((a, b) => b.date.localeCompare(a.date));
+): Promise<RoadsideInspection[]> {
+  const sb = await createClient();
+  let q = sb.from("roadside_inspections").select("*");
+  if (opts.driverId) q = q.eq("driver_id", opts.driverId);
+  if (opts.truckId) q = q.eq("truck_id", opts.truckId);
+  if (opts.range?.from) q = q.gte("date", opts.range.from);
+  if (opts.range?.to) q = q.lte("date", opts.range.to);
+  const { data, error } = await q
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const rows = (data ?? []) as RoadsideRow[];
+  const signed = await signPaths(rows.map((r) => r.report_path));
+  return rows.map((r) => ({
+    id: r.id,
+    driverId: r.driver_id,
+    truckId: r.truck_id,
+    date: r.date,
+    state: r.state,
+    location: r.location,
+    result: r.result,
+    violationNotes: r.violation_notes ?? undefined,
+    report: r.report_path
+      ? {
+          name: r.report_name ?? "Inspection report",
+          type: r.report_type === "pdf" ? "pdf" : "image",
+          url: signed.get(r.report_path),
+        }
+      : null,
+    loggedBy: r.logged_by ?? "",
+    createdAt: r.created_at,
+  }));
 }
 
-export async function createRoadside(
-  input: Omit<RoadsideInspection, "id" | "createdAt">,
-) {
-  const row: RoadsideInspection = {
-    ...input,
-    id: newId("rs"),
-    createdAt: new Date().toISOString(),
-  };
-  db.roadside.push(row);
-  return row;
+export async function createRoadside(input: {
+  driverId: string;
+  truckId: string;
+  date: string;
+  state: string;
+  location: string;
+  result: RoadsideResult;
+  violationNotes?: string;
+  report: { name: string; type: "image" | "pdf"; path: string } | null;
+}): Promise<{ id: string }> {
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from("roadside_inspections")
+    .insert({
+      driver_id: input.driverId,
+      truck_id: input.truckId,
+      date: input.date,
+      state: input.state,
+      location: input.location,
+      result: input.result,
+      violation_notes:
+        input.result === "clean" ? null : input.violationNotes || null,
+      report_path: input.report?.path ?? null,
+      report_name: input.report?.name ?? null,
+      report_type: input.report?.type ?? null,
+      // logged_by and created_at are set by the database
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { id: data.id };
 }
 
-/* ---------- Scoring ---------- */
+/* =========================================================
+   Scoring
+   ========================================================= */
 export async function getScoring(): Promise<ScoringSettings> {
-  return db.settings.scoring;
+  const sb = await createClient();
+  const { data } = await sb.rpc("get_scoring");
+  return {
+    ...DEFAULT_SCORING,
+    ...((data as Partial<ScoringSettings> | null) ?? {}),
+  };
 }
 
 export async function updateScoring(next: ScoringSettings) {
-  db.settings.scoring = { ...next };
-  return db.settings.scoring;
+  const sb = await createClient();
+  const { error } = await sb
+    .from("settings")
+    .update({ scoring: { ...next } })
+    .eq("id", 1);
+  if (error) throw error;
+  return next;
 }
 
 export function pointsFor(result: RoadsideResult, s: ScoringSettings) {
@@ -432,8 +420,10 @@ export async function getDriverScore(
   driverId: string,
   range?: DateRange,
 ): Promise<DriverScore> {
-  const s = db.settings.scoring;
-  const list = await getRoadside({ driverId, range });
+  const [s, list] = await Promise.all([
+    getScoring(),
+    getRoadside({ driverId, range }),
+  ]);
   const keys: RoadsideResult[] = ["clean", "violations", "out_of_service"];
   const lines = keys.map((key) => {
     const count = list.filter((r) => r.result === key).length;

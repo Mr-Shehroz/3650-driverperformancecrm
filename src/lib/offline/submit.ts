@@ -1,8 +1,17 @@
+// File: src/lib/offline/submit.ts
+// (REPLACE the whole file)
+
 "use client";
 
 import type { z } from "zod";
 import { toFieldErrors } from "@/lib/validation/driver";
+import { toPathErrors } from "@/lib/validation/fleet";
 import { enqueue, isLocalId } from "./queue";
+import {
+  OfflineUploadError,
+  prepareEvidence,
+  UploadRejectedError,
+} from "@/lib/evidence/upload";
 import type { OutboxType } from "./db";
 
 type ActionLike = {
@@ -29,20 +38,35 @@ export async function submitOrQueue<S extends z.ZodType>(opts: {
   jobRef: string;
   localId?: string;
   afterQueue: () => void;
+  /** "path" gives keys like "items.2.notes" (for forms with lists) */
+  errorKeys?: "first" | "path";
 }): Promise<SubmitResult> {
   // Check on the phone first so bad data never sits in the queue
   const parsed = opts.schema.safeParse(opts.payload);
-  if (!parsed.success) return { fieldErrors: toFieldErrors(parsed.error) };
+  if (!parsed.success) {
+    return {
+      fieldErrors:
+        opts.errorKeys === "path"
+          ? toPathErrors(parsed.error)
+          : toFieldErrors(parsed.error),
+    };
+  }
 
   const data = parsed.data as Record<string, unknown>;
   const mustQueue = !navigator.onLine || isLocalId(data.jobId);
+  // Same key online and in the queue, so photos already uploaded are reused on retry
+  const key = opts.localId ?? crypto.randomUUID();
 
   if (!mustQueue) {
     try {
-      return await opts.online(parsed.data);
+      // Photos and signatures go straight to private storage; the server gets file paths
+      const prepared = await prepareEvidence(opts.type, data, key);
+      return await opts.online(prepared as z.infer<S>);
     } catch (err) {
-      // Network failure → fall through and save on the phone
-      if (!(err instanceof TypeError)) throw err;
+      if (err instanceof UploadRejectedError) return { error: err.message };
+      // No signal (upload or save failed to connect) → save on the phone instead
+      if (!(err instanceof OfflineUploadError) && !(err instanceof TypeError))
+        throw err;
     }
   }
 
@@ -50,7 +74,7 @@ export async function submitOrQueue<S extends z.ZodType>(opts: {
     await enqueue(opts.type, data, {
       label: opts.label,
       jobRef: opts.jobRef,
-      id: opts.localId,
+      id: key,
     });
   } catch {
     return { error: "Couldn't save on this phone. Please try again." };

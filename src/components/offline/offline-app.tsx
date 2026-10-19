@@ -1,3 +1,6 @@
+// File: src/components/offline/offline-app.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useSyncExternalStore } from "react";
@@ -10,6 +13,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   CloudOff,
   CloudUpload,
   DollarSign,
@@ -31,6 +35,7 @@ import { PreDamageForm } from "@/components/driver/pre-damage-form";
 import { DamageForm } from "@/components/driver/damage-form";
 import { ReviewForm } from "@/components/driver/review-form";
 import { UpsellForm } from "@/components/driver/upsell-form";
+import { PreTripForm } from "@/components/fleet/pre-trip-form";
 import { OutboxView } from "./outbox-view";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
@@ -414,6 +419,25 @@ function HomeView({
         </a>
       </div>
 
+      {/* Pre-trip check */}
+      <a
+        href="#/driver/pre-trip/new"
+        className="group flex items-center gap-4 rounded-2xl border bg-card p-5 transition hover:border-primary/40"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <ClipboardCheck className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold">Pre-trip check</p>
+          <p className="text-sm text-muted-foreground">
+            {snapshot.trucks?.length
+              ? "Inspect your truck before you drive"
+              : "Open the app once online to load the truck list"}
+          </p>
+        </div>
+        <ChevronRight className="ml-auto h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-primary" />
+      </a>
+
       {localJobs.length > 0 && (
         <section>
           <h2 className="mb-4 text-lg font-bold sm:text-xl">
@@ -685,6 +709,26 @@ export function OfflineApp() {
             currentUserId={snapshot.user.id}
             drivers={snapshot.drivers}
           />
+        </SplitLayout>
+      </>
+    );
+  } else if (path === "/driver/pre-trip/new") {
+    view = (
+      <>
+        <BackLink href="/driver" label="Offline home" />
+        <Title
+          title="Pre-trip inspection"
+          description="Saved on this phone until you're back online."
+        />
+        <SplitLayout aside={<OfflineTips />}>
+          {snapshot.trucks?.length ? (
+            <PreTripForm trucks={snapshot.trucks} />
+          ) : (
+            <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+              No trucks saved on this phone yet. Open the app once with signal,
+              then try again.
+            </p>
+          )}
         </SplitLayout>
       </>
     );

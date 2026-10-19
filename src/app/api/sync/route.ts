@@ -1,3 +1,6 @@
+// File: src/app/api/sync/route.ts
+// (REPLACE the whole file)
+
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
@@ -11,11 +14,20 @@ import {
   setOnTimeFor,
   type ServiceResult,
 } from "@/lib/services/driver";
+import { createPreTripFor } from "@/lib/services/fleet";
 
 const bodySchema = z.object({
   clientId: z.string().min(8).max(80),
   userId: z.string().min(1),
-  type: z.enum(["job", "pre_damage", "damage", "review", "upsell", "on_time"]),
+  type: z.enum([
+    "job",
+    "pre_damage",
+    "damage",
+    "review",
+    "upsell",
+    "on_time",
+    "pre_trip",
+  ]),
   payload: z.record(z.string(), z.unknown()),
 });
 
@@ -67,6 +79,11 @@ export async function POST(req: NextRequest) {
     case "on_time":
       res = await setOnTimeFor(user, body.payload);
       break;
+    case "pre_trip": {
+      const r = await createPreTripFor(user, body.payload, { offline: true });
+      res = r.ok ? { ok: true, id: r.id, jobId: "" } : r;
+      break;
+    }
   }
 
   if (!res.ok) {
@@ -81,6 +98,6 @@ export async function POST(req: NextRequest) {
   }
 
   const result = { id: res.id };
-  await saveSyncReceipt(body.clientId, result);
+  await saveSyncReceipt(body.clientId, user.id, result);
   return NextResponse.json(result);
 }

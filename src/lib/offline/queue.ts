@@ -1,6 +1,10 @@
+// File: src/lib/offline/queue.ts
+// (REPLACE the whole file)
+
 "use client";
 
 import { offlineDb, type OutboxItem, type OutboxType } from "./db";
+import { prepareEvidence, UploadRejectedError } from "@/lib/evidence/upload";
 
 export const LOCAL_PREFIX = "local-";
 export const isLocalId = (id: unknown): id is string =>
@@ -143,6 +147,23 @@ async function runSync(userId: string): Promise<SyncSummary> {
       payload.jobId = mapped.serverId;
     }
 
+    // Upload photos / signature first (files are named by item id, so retries reuse them)
+    let body: Record<string, unknown>;
+    try {
+      body = await prepareEvidence(item.type, payload, item.id);
+    } catch (err) {
+      if (err instanceof UploadRejectedError) {
+        await offlineDb.outbox.update(item.id, {
+          status: "failed",
+          attempts: item.attempts + 1,
+          error: err.message,
+        });
+        failed++;
+        continue;
+      }
+      break; // signal dropped, try again later
+    }
+
     let res: Response;
     try {
       res = await fetch("/api/sync", {
@@ -153,7 +174,7 @@ async function runSync(userId: string): Promise<SyncSummary> {
           clientId: item.id,
           userId,
           type: item.type,
-          payload,
+          payload: body,
         }),
       });
     } catch {

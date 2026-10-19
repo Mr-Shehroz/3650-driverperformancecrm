@@ -1,3 +1,6 @@
+// File: src/types/index.ts
+// (REPLACE the whole file)
+
 export type Role = "admin" | "driver" | "sales_rep";
 
 export interface User {
@@ -88,29 +91,6 @@ export interface Upsell {
   deletedAt?: string | null;
 }
 
-export type LeadSource =
-  "google_ppc" | "tv_ad" | "google_lead" | "direct" | "referral" | "other";
-
-export interface Lead {
-  id: string;
-  granotId: string;
-  date: string;
-  repId: string;
-  source: LeadSource;
-  leadCost: number;
-  costOverridden: boolean;
-  status: LeadStatus;
-  bookedDate: string | null;
-  jobValue: number | null;
-}
-
-export interface LeadCost {
-  id: string;
-  source: LeadSource;
-  month: string; // YYYY-MM
-  cost: number;
-}
-
 export interface JobDetail extends Job {
   preDamages: PreDamage[];
   damages: DamageIncident[];
@@ -123,8 +103,9 @@ export interface DriverMetrics {
   driverName: string;
   jobs: number;
   damageCount: number;
+  damagedJobs: number; // jobs with at least one damage
   damageCost: number;
-  damageRate: number;
+  damageRate: number; // damagedJobs / jobs
   reviewCount: number;
   avgStars: number;
   fiveStarRate: number;
@@ -148,25 +129,6 @@ export interface RepMetrics {
 export interface DateRange {
   from?: string;
   to?: string;
-}
-
-export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
-  google_ppc: "Google PPC",
-  tv_ad: "TV Ad",
-  google_lead: "Google Lead",
-  direct: "Direct",
-  referral: "Referral",
-  other: "Other",
-};
-
-export interface SourceBreakdownRow {
-  source: LeadSource;
-  leads: number;
-  booked: number;
-  closingRatio: number;
-  totalLeadCost: number;
-  cpa: number;
-  revenue: number;
 }
 
 export interface SalesMonthlyPoint {
@@ -268,6 +230,8 @@ export interface Lead {
   status: LeadStatus;
   bookedDate: string | null;
   jobValue: number | null;
+  /** Sample lead for review (removed before Granot goes live) */
+  isSample?: boolean;
 }
 
 export interface LeadCost {
