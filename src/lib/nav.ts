@@ -1,3 +1,6 @@
+// File: src/lib/nav.ts
+// (REPLACE the whole file)
+
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
@@ -19,6 +22,7 @@ import {
   Siren,
   Wrench,
   Container,
+  Droplets,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -104,6 +108,7 @@ export const DRIVER_NAV_GROUPS: NavGroup[] = [
         label: "Pre-trip check",
         icon: ClipboardCheck,
       },
+      { href: "/driver/wash", label: "Truck wash", icon: Droplets },
       { href: "/driver/roadside", label: "Roadside inspections", icon: Siren },
     ],
   },

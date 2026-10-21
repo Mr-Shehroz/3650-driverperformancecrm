@@ -713,6 +713,8 @@ export async function getSettings(): Promise<AppSettings> {
       clean: 5,
       violations: -10,
       outOfService: -25,
+      washIntervalDays: 14,
+      overdueWash: -5,
       ...((data.scoring as Partial<AppSettings["scoring"]> | null) ?? {}),
     },
   };

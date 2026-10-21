@@ -14,7 +14,7 @@ import {
   setOnTimeFor,
   type ServiceResult,
 } from "@/lib/services/driver";
-import { createPreTripFor } from "@/lib/services/fleet";
+import { createPreTripFor, createWashFor } from "@/lib/services/fleet";
 
 const bodySchema = z.object({
   clientId: z.string().min(8).max(80),
@@ -27,6 +27,7 @@ const bodySchema = z.object({
     "upsell",
     "on_time",
     "pre_trip",
+    "wash",
   ]),
   payload: z.record(z.string(), z.unknown()),
 });
@@ -81,6 +82,11 @@ export async function POST(req: NextRequest) {
       break;
     case "pre_trip": {
       const r = await createPreTripFor(user, body.payload, { offline: true });
+      res = r.ok ? { ok: true, id: r.id, jobId: "" } : r;
+      break;
+    }
+    case "wash": {
+      const r = await createWashFor(user, body.payload, { offline: true });
       res = r.ok ? { ok: true, id: r.id, jobId: "" } : r;
       break;
     }

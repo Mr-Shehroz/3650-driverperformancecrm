@@ -24,11 +24,14 @@ import {
 import { PhotoPicker } from "@/components/driver/photo-picker";
 import { SignatureField } from "@/components/driver/signature-field";
 import { FormActions } from "@/components/driver/form-actions";
+import { PhotoSlot } from "./photo-slot";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { createPreTripAction } from "@/app/(driver)/driver/fleet-actions";
 import {
   CHECK_ITEMS,
+  CONDITION_PHOTOS,
   type CheckItemKey,
+  type ConditionPhotoKey,
   type CheckStatus,
   type TruckStatus,
 } from "@/types";
@@ -95,6 +98,15 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
       {} as Record<CheckItemKey, ItemState>,
     ),
   );
+  const [condition, setCondition] = useState<
+    Record<ConditionPhotoKey, string | null>
+  >({
+    front: null,
+    rear: null,
+    driver_side: null,
+    passenger_side: null,
+    cab: null,
+  });
   const [truckStatus, setTruckStatus] = useState<TruckStatus | "">("");
   const [notes, setNotes] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
@@ -103,6 +115,11 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
     errors[k] && setErrors((e) => ({ ...e, [k]: "" }));
   const setItem = (key: CheckItemKey, patch: Partial<ItemState>) =>
     setItems((s) => ({ ...s, [key]: { ...s[key], ...patch } }));
+
+  const conditionDone = CONDITION_PHOTOS.filter((c) => condition[c.key]).length;
+  const conditionErr = CONDITION_PHOTOS.some(
+    (c) => errors[`conditionPhotos.${c.key}`],
+  );
 
   const flagged = CHECK_ITEMS.filter(
     (c) => items[c.key].status === "attention",
@@ -120,6 +137,9 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
         notes: items[c.key].notes.trim() || undefined,
         photos: items[c.key].photos,
       })),
+      conditionPhotos: Object.fromEntries(
+        CONDITION_PHOTOS.map((c) => [c.key, condition[c.key] ?? undefined]),
+      ),
       truckStatus: truckStatus || undefined,
       notes: notes.trim() || undefined,
       signature: signature ?? "",
@@ -198,6 +218,12 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
         description="Choose the truck you're driving today."
       >
         <Field label="Unit number" error={errors.truckId}>
+          {trucks.length === 0 && (
+            <p className="rounded-xl border border-dashed bg-white px-4 py-6 text-center text-sm text-muted-foreground">
+              No active trucks yet. Ask your admin to add your truck under Admin
+              → Trucks.
+            </p>
+          )}
           <div className="grid gap-2 sm:grid-cols-2">
             {trucks.map((t) => {
               const active = truckId === t.id;
@@ -263,6 +289,48 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
             className="h-12 bg-white text-base tabular-nums sm:max-w-xs"
           />
         </Field>
+      </FormSection>
+
+      {/* Condition photos */}
+      <FormSection
+        title="Truck condition photos"
+        description="Take all 5 photos of the truck. They are saved with today's date and your name."
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium",
+            conditionDone === CONDITION_PHOTOS.length
+              ? "bg-green-50 text-green-800"
+              : conditionErr
+                ? "bg-red-50 text-destructive"
+                : "bg-muted/60 text-muted-foreground",
+          )}
+        >
+          <span>
+            {conditionDone === CONDITION_PHOTOS.length
+              ? "All 5 photos added"
+              : conditionErr
+                ? "Add every photo below"
+                : "5 photos required"}
+          </span>
+          <span className="tabular-nums">
+            {conditionDone} / {CONDITION_PHOTOS.length}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {CONDITION_PHOTOS.map((c) => (
+            <PhotoSlot
+              key={c.key}
+              label={c.label}
+              value={condition[c.key]}
+              invalid={!!errors[`conditionPhotos.${c.key}`]}
+              onChange={(photo) => {
+                setCondition((s) => ({ ...s, [c.key]: photo }));
+                clear(`conditionPhotos.${c.key}`);
+              }}
+            />
+          ))}
+        </div>
       </FormSection>
 
       {/* Checklist */}

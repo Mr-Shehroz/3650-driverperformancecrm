@@ -1,3 +1,6 @@
+// File: src/components/fleet/scoring-form.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -27,6 +30,16 @@ const FIELDS: { key: keyof ScoringSettings; label: string; hint: string }[] = [
     key: "outOfService",
     label: "Out of service",
     hint: "Points removed (0 or less)",
+  },
+  {
+    key: "washIntervalDays",
+    label: "Wash every (days)",
+    hint: "A truck is overdue after this many days without a wash",
+  },
+  {
+    key: "overdueWash",
+    label: "Overdue wash",
+    hint: "Points removed for each overdue wash (0 or less)",
   },
 ];
 
@@ -62,7 +75,7 @@ export function ScoringForm({ scoring }: { scoring: ScoringSettings }) {
     <form onSubmit={save} noValidate className="mt-8">
       <SectionRow
         title="Driver scoring"
-        description="Points for DOT roadside inspections. Changes apply to every driver's score right away."
+        description="Points for DOT roadside inspections and overdue truck washes. Changes apply to every driver's score right away."
       >
         <div className="grid gap-5 sm:grid-cols-2">
           {FIELDS.map((f) => (

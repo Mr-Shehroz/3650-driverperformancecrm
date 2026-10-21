@@ -6,6 +6,7 @@ import { after } from "next/server";
 import {
   createPreTrip,
   createRoadside,
+  createWash,
   getTruck,
   getUserById,
 } from "@/lib/data";
@@ -13,6 +14,7 @@ import {
   preTripServerSchema,
   roadsideSchema,
   toPathErrors,
+  washServerSchema,
 } from "@/lib/validation/fleet";
 import { isFleetPathFor } from "@/lib/evidence/paths";
 import { sendDoNotDriveAlert } from "@/lib/email/alerts";
@@ -48,7 +50,11 @@ export async function createPreTripFor(
     return { ok: false, fieldErrors: { truckId: "Choose an active truck" } };
 
   // Every file must be in this driver's own folder
-  const paths = [d.signature, ...d.items.flatMap((i) => i.photos)];
+  const paths = [
+    d.signature,
+    ...d.items.flatMap((i) => i.photos),
+    ...Object.values(d.conditionPhotos),
+  ];
   if (!paths.every((p) => isFleetPathFor(p, "pre_trip", user.id))) {
     return {
       ok: false,
@@ -61,6 +67,7 @@ export async function createPreTripFor(
       truckId: truck.id,
       driverId: user.id,
       items: d.items.map((i) => ({ ...i, notes: i.notes || undefined })),
+      conditionPhotos: d.conditionPhotos,
       odometer: d.odometer,
       truckStatus: d.truckStatus,
       notes: d.notes || undefined,
@@ -133,6 +140,48 @@ export async function createRoadsideFor(
       result: d.result,
       violationNotes: d.violationNotes || undefined,
       report: d.report,
+    });
+    refresh();
+    return { ok: true, id: rec.id };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Driver marks a truck as washed. Used by the online form and by offline sync. */
+export async function createWashFor(
+  user: User,
+  raw: unknown,
+  opts: { offline?: boolean } = {},
+): Promise<FleetServiceResult> {
+  const parsed = washServerSchema.safeParse(raw);
+  if (!parsed.success)
+    return { ok: false, fieldErrors: toPathErrors(parsed.error) };
+  const d = parsed.data;
+
+  const truck = await getTruck(d.truckId);
+  if (!truck || !truck.active)
+    return { ok: false, fieldErrors: { truckId: "Choose an active truck" } };
+
+  const paths = [d.photo, ...(d.receipt ? [d.receipt] : [])];
+  if (!paths.every((p) => isFleetPathFor(p, "wash", user.id))) {
+    return {
+      ok: false,
+      error: "Photos didn't upload correctly. Please try again.",
+    };
+  }
+
+  try {
+    const rec = await createWash({
+      truckId: truck.id,
+      driverId: user.id,
+      photoPath: d.photo,
+      receiptPath: d.receipt ?? null,
+      notes: d.notes || undefined,
+      capturedAtDevice: d.capturedAtDevice,
+      lat: d.lat,
+      lng: d.lng,
+      syncedOffline: !!opts.offline,
     });
     refresh();
     return { ok: true, id: rec.id };

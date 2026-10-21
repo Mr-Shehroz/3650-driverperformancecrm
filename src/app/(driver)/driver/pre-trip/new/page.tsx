@@ -1,3 +1,6 @@
+// File: src/app/(driver)/driver/pre-trip/new/page.tsx
+// (REPLACE the whole file)
+
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
@@ -26,6 +29,7 @@ export default async function NewPreTripPage() {
       />
       <DriverFormLayout
         tips={[
+          "Take all 5 condition photos: front, rear, both sides and the cab.",
           "Check every item, even if you drove this truck yesterday.",
           "Add a clear photo for anything that needs attention.",
           "Flagged items go straight to the maintenance team.",

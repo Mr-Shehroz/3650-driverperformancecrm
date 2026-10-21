@@ -276,6 +276,49 @@ export interface Truck {
   status: TruckStatus;
   odometer: number | null;
   lastInspectionAt: string | null;
+  assignedDriverId: string | null;
+  lastWashedAt: string | null;
+  createdAt: string;
+}
+
+/** The 5 required truck condition photos taken on every pre-trip */
+export type ConditionPhotoKey =
+  "front" | "rear" | "driver_side" | "passenger_side" | "cab";
+
+export const CONDITION_PHOTOS: { key: ConditionPhotoKey; label: string }[] = [
+  { key: "front", label: "Front" },
+  { key: "rear", label: "Rear" },
+  { key: "driver_side", label: "Driver side" },
+  { key: "passenger_side", label: "Passenger side" },
+  { key: "cab", label: "Cab interior" },
+];
+
+export interface TruckWash {
+  id: string;
+  truckId: string;
+  driverId: string;
+  photoUrl: string;
+  receiptUrl: string | null;
+  notes?: string;
+  capturedAtDevice: string;
+  receivedAtServer: string;
+  syncedOffline: boolean;
+}
+
+export interface WashOverdueEvent {
+  id: string;
+  truckId: string;
+  driverId: string | null;
+  since: string;
+  dueDate: string;
+}
+
+/** Wash status of a truck, worked out from its last wash and the interval setting */
+export interface WashStatus {
+  lastWashedAt: string | null;
+  dueDate: string; // YYYY-MM-DD
+  overdue: boolean;
+  daysLeft: number; // negative when overdue
 }
 
 export type CheckItemKey =
@@ -333,6 +376,8 @@ export interface PreTripInspection {
   lat: number | null;
   lng: number | null;
   syncedOffline: boolean;
+  /** Signed links; empty for pre-trips saved before condition photos existed */
+  conditionPhotos: Partial<Record<ConditionPhotoKey, string>>;
 }
 
 export type TicketStatus = "open" | "in_progress" | "fixed";
@@ -385,10 +430,14 @@ export interface ScoringSettings {
   clean: number;
   violations: number;
   outOfService: number;
+  /** A truck is overdue when it hasn't been washed for this many days */
+  washIntervalDays: number;
+  /** Points for each overdue wash (0 or less) */
+  overdueWash: number;
 }
 
 export interface ScoreLine {
-  key: RoadsideResult;
+  key: RoadsideResult | "overdue_wash";
   label: string;
   count: number;
   points: number;

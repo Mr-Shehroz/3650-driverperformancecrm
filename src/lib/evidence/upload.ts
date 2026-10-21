@@ -176,11 +176,41 @@ export async function prepareEvidence(
       uploaded.push({ ...item, photos: paths });
     }
     out.items = uploaded;
+    // The 5 truck condition photos
+    const condition =
+      (payload.conditionPhotos as Record<string, unknown> | undefined) ?? {};
+    const conditionPaths: Record<string, unknown> = {};
+    for (const [k, photo] of Object.entries(condition)) {
+      conditionPaths[k] = isDataUrl(photo)
+        ? await uploadDataUrl(
+            FLEET_BUCKET,
+            fleetPath("pre_trip", uid, `${key}-cond-${k}`),
+            photo,
+          )
+        : photo;
+    }
+    out.conditionPhotos = conditionPaths;
     if (isDataUrl(payload.signature)) {
       out.signature = await uploadDataUrl(
         FLEET_BUCKET,
         fleetPath("pre_trip", uid, `${key}-signature`),
         payload.signature,
+      );
+    }
+  } else if (type === "wash") {
+    const uid = await currentUserId();
+    if (isDataUrl(payload.photo)) {
+      out.photo = await uploadDataUrl(
+        FLEET_BUCKET,
+        fleetPath("wash", uid, `${key}-truck`),
+        payload.photo,
+      );
+    }
+    if (isDataUrl(payload.receipt)) {
+      out.receipt = await uploadDataUrl(
+        FLEET_BUCKET,
+        fleetPath("wash", uid, `${key}-receipt`),
+        payload.receipt,
       );
     }
   }

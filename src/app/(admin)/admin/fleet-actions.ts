@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/session";
 import {
+  excuseOverdueEvent,
+  getUserById,
   saveTruck,
   truckUnitExists,
   updateScoring,
@@ -33,6 +35,7 @@ const truckSchema = z.object({
   description: z.string().trim().max(120).optional(),
   plate: z.string().trim().max(20).optional(),
   active: z.boolean(),
+  assignedDriverId: z.string().nullable().optional(),
 });
 
 export async function saveTruckAction(
@@ -44,11 +47,18 @@ export async function saveTruckAction(
   if (await truckUnitExists(parsed.data.unitNumber, parsed.data.id)) {
     return { fieldErrors: { unitNumber: "This unit number already exists" } };
   }
+  const assignedDriverId = parsed.data.assignedDriverId || null;
+  if (assignedDriverId) {
+    const driver = await getUserById(assignedDriverId);
+    if (!driver || driver.role !== "driver")
+      return { fieldErrors: { assignedDriverId: "Choose a driver" } };
+  }
   try {
     await saveTruck({
       ...parsed.data,
       description: parsed.data.description || undefined,
       plate: parsed.data.plate || undefined,
+      assignedDriverId,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
@@ -98,6 +108,20 @@ export async function updateScoringAction(
     await updateScoring(parsed.data);
   } catch {
     return { error: "Couldn't save scoring. Please try again." };
+  }
+  refresh();
+}
+
+/** Excuse one overdue wash so it no longer counts against the driver */
+export async function excuseOverdueWashAction(
+  id: string,
+): Promise<FleetAdminResult> {
+  await requireRole("admin");
+  try {
+    const row = await excuseOverdueEvent(id);
+    if (!row) return { error: "Not found." };
+  } catch {
+    return { error: "Couldn't excuse it. Please try again." };
   }
   refresh();
 }

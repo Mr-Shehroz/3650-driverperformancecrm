@@ -10,7 +10,8 @@ export type OutboxType =
   | "review"
   | "upsell"
   | "on_time"
-  | "pre_trip";
+  | "pre_trip"
+  | "wash";
 
 export interface OutboxItem {
   id: string; // unique per item; for "job" items this is the local job id

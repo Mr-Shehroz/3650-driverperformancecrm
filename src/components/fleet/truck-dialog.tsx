@@ -1,3 +1,6 @@
+// File: src/components/fleet/truck-dialog.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -7,11 +10,18 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/shared/modal";
-import { Field, Segmented } from "@/components/driver/form-bits";
+import { Field, NativeSelect, Segmented } from "@/components/driver/form-bits";
 import { saveTruckAction } from "@/app/(admin)/admin/fleet-actions";
 import type { Truck } from "@/types";
 
-export function TruckDialogButton({ truck }: { truck?: Truck }) {
+export function TruckDialogButton({
+  truck,
+  drivers,
+}: {
+  truck?: Truck;
+  /** Active drivers who can be assigned to the truck */
+  drivers: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -21,19 +31,30 @@ export function TruckDialogButton({ truck }: { truck?: Truck }) {
     description: truck?.description ?? "",
     plate: truck?.plate ?? "",
     active: truck?.active ?? true,
+    assignedDriverId: truck?.assignedDriverId ?? "",
   });
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const res = await saveTruckAction({ id: truck?.id, ...v });
+      const res = await saveTruckAction({
+        id: truck?.id,
+        ...v,
+        assignedDriverId: v.assignedDriverId || null,
+      });
       if (res?.fieldErrors) setErrors(res.fieldErrors);
       else if (res?.error) toast.error(res.error);
       else {
         toast.success(truck ? "Truck updated" : `Unit ${v.unitNumber} added`);
         setOpen(false);
         if (!truck)
-          setV({ unitNumber: "", description: "", plate: "", active: true });
+          setV({
+            unitNumber: "",
+            description: "",
+            plate: "",
+            active: true,
+            assignedDriverId: "",
+          });
         router.refresh();
       }
     });
@@ -95,6 +116,33 @@ export function TruckDialogButton({ truck }: { truck?: Truck }) {
               onChange={(e) => setV((s) => ({ ...s, plate: e.target.value }))}
               className="h-12 bg-white text-base"
             />
+          </Field>
+          <Field
+            label="Assigned driver"
+            htmlFor="driver"
+            optional
+            error={errors.assignedDriverId}
+            hint="Overdue washes count against this driver. If nobody is assigned, the driver of the last pre-trip is used."
+          >
+            <NativeSelect
+              id="driver"
+              value={v.assignedDriverId}
+              onChange={(e) =>
+                setV((s) => ({ ...s, assignedDriverId: e.target.value }))
+              }
+            >
+              <option value="">Not assigned</option>
+              {drivers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+              {/* Keep a driver who was deactivated after being assigned */}
+              {v.assignedDriverId &&
+                !drivers.some((d) => d.id === v.assignedDriverId) && (
+                  <option value={v.assignedDriverId}>Inactive driver</option>
+                )}
+            </NativeSelect>
           </Field>
           <Field
             label="Status"

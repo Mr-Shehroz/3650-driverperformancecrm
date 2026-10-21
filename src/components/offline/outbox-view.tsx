@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
+  Droplets,
   DollarSign,
   Loader2,
   RefreshCw,
@@ -45,6 +46,7 @@ const ICONS: Record<OutboxType, React.ElementType> = {
   upsell: DollarSign,
   on_time: Clock,
   pre_trip: ClipboardCheck,
+  wash: Droplets,
 };
 
 export function OutboxView() {

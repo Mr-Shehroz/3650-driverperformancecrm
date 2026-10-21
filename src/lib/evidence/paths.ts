@@ -27,13 +27,13 @@ export function isEvidencePathFor(
 }
 
 /* ---------- Fleet files (pre-trip photos/signatures, roadside reports) ---------- */
-/** Private bucket: pre_trip/<user_id>/<file> and roadside/<user_id>/<file> */
+/** Private bucket: pre_trip/<user_id>/<file>, roadside/<user_id>/<file> and wash/<user_id>/<file> */
 export const FLEET_BUCKET = "fleet";
 
-export type FleetKind = "pre_trip" | "roadside";
+export type FleetKind = "pre_trip" | "roadside" | "wash";
 
 const FLEET_RE = new RegExp(
-  `^(pre_trip|roadside)/(${UUID})/[A-Za-z0-9._-]{1,120}\\.(jpg|png|pdf)$`,
+  `^(pre_trip|roadside|wash)/(${UUID})/[A-Za-z0-9._-]{1,120}\\.(jpg|png|pdf)$`,
 );
 
 export function fleetPath(kind: FleetKind, userId: string, file: string) {

@@ -473,6 +473,7 @@ export type Database = {
       pre_trips: {
         Row: {
           captured_at_device: string;
+          condition_photos: Json;
           driver_id: string;
           id: string;
           items: Json;
@@ -488,6 +489,7 @@ export type Database = {
         };
         Insert: {
           captured_at_device: string;
+          condition_photos?: Json;
           driver_id: string;
           id?: string;
           items: Json;
@@ -503,6 +505,7 @@ export type Database = {
         };
         Update: {
           captured_at_device?: string;
+          condition_photos?: Json;
           driver_id?: string;
           id?: string;
           items?: Json;
@@ -749,13 +752,72 @@ export type Database = {
           },
         ];
       };
+      truck_washes: {
+        Row: {
+          captured_at_device: string;
+          driver_id: string;
+          id: string;
+          lat: number | null;
+          lng: number | null;
+          notes: string | null;
+          photo_path: string;
+          receipt_path: string | null;
+          received_at_server: string;
+          synced_offline: boolean;
+          truck_id: string;
+        };
+        Insert: {
+          captured_at_device: string;
+          driver_id: string;
+          id?: string;
+          lat?: number | null;
+          lng?: number | null;
+          notes?: string | null;
+          photo_path: string;
+          receipt_path?: string | null;
+          received_at_server?: string;
+          synced_offline?: boolean;
+          truck_id: string;
+        };
+        Update: {
+          captured_at_device?: string;
+          driver_id?: string;
+          id?: string;
+          lat?: number | null;
+          lng?: number | null;
+          notes?: string | null;
+          photo_path?: string;
+          receipt_path?: string | null;
+          received_at_server?: string;
+          synced_offline?: boolean;
+          truck_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "truck_washes_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "truck_washes_truck_id_fkey";
+            columns: ["truck_id"];
+            isOneToOne: false;
+            referencedRelation: "trucks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       trucks: {
         Row: {
           active: boolean;
+          assigned_driver_id: string | null;
           created_at: string;
           description: string | null;
           id: string;
           last_inspection_at: string | null;
+          last_washed_at: string | null;
           odometer: number | null;
           plate: string | null;
           status: Database["public"]["Enums"]["truck_status"];
@@ -764,10 +826,12 @@ export type Database = {
         };
         Insert: {
           active?: boolean;
+          assigned_driver_id?: string | null;
           created_at?: string;
           description?: string | null;
           id?: string;
           last_inspection_at?: string | null;
+          last_washed_at?: string | null;
           odometer?: number | null;
           plate?: string | null;
           status?: Database["public"]["Enums"]["truck_status"];
@@ -776,17 +840,27 @@ export type Database = {
         };
         Update: {
           active?: boolean;
+          assigned_driver_id?: string | null;
           created_at?: string;
           description?: string | null;
           id?: string;
           last_inspection_at?: string | null;
+          last_washed_at?: string | null;
           odometer?: number | null;
           plate?: string | null;
           status?: Database["public"]["Enums"]["truck_status"];
           unit_number?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "trucks_assigned_driver_id_fkey";
+            columns: ["assigned_driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       upsells: {
         Row: {
@@ -836,6 +910,61 @@ export type Database = {
           },
         ];
       };
+      wash_overdue_events: {
+        Row: {
+          created_at: string;
+          driver_id: string | null;
+          due_date: string;
+          excused: boolean;
+          excused_by: string | null;
+          id: string;
+          since: string;
+          truck_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          driver_id?: string | null;
+          due_date: string;
+          excused?: boolean;
+          excused_by?: string | null;
+          id?: string;
+          since: string;
+          truck_id: string;
+        };
+        Update: {
+          created_at?: string;
+          driver_id?: string | null;
+          due_date?: string;
+          excused?: boolean;
+          excused_by?: string | null;
+          id?: string;
+          since?: string;
+          truck_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "wash_overdue_events_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "wash_overdue_events_excused_by_fkey";
+            columns: ["excused_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "wash_overdue_events_truck_id_fkey";
+            columns: ["truck_id"];
+            isOneToOne: false;
+            referencedRelation: "trucks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -876,6 +1005,7 @@ export type Database = {
         Args: never;
         Returns: Database["public"]["Enums"]["user_role"];
       };
+      flag_overdue_washes: { Args: never; Returns: number };
       get_scoring: { Args: never; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
       lead_cost_for: {
@@ -886,6 +1016,7 @@ export type Database = {
       owns_job: { Args: { p_job: string }; Returns: boolean };
       recalc_lead_costs: { Args: { p_source: string }; Returns: number };
       seed_sample_leads_internal: { Args: never; Returns: number };
+      truck_responsible_driver: { Args: { p_truck: string }; Returns: string };
     };
     Enums: {
       delivered_by: "drs" | "partner";
