@@ -1,3 +1,6 @@
+// File: src/components/fleet/inspection-detail.tsx
+// (REPLACE the whole file)
+
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -21,6 +24,7 @@ import {
   type Truck,
 } from "@/types";
 import { TicketStatusPill, TruckStatusPill } from "./status-badges";
+import { ConditionPhotoGrid } from "./wash-bits";
 import { cn } from "@/lib/utils";
 
 const itemLabel = (key: string) =>
@@ -97,6 +101,18 @@ export function InspectionDetail({
             )}
           </div>
         </div>
+
+        {/* Condition photos */}
+        {Object.keys(inspection.conditionPhotos).length > 0 && (
+          <section className="rounded-2xl border bg-card p-4 sm:p-5">
+            <h2 className="text-lg font-bold">Truck condition</h2>
+            <p className="mb-4 mt-0.5 text-sm text-muted-foreground">
+              Taken by {driverName} ·{" "}
+              {formatDateTimeET(inspection.capturedAtDevice)}
+            </p>
+            <ConditionPhotoGrid inspection={inspection} />
+          </section>
+        )}
 
         {/* Checklist */}
         <section className="rounded-2xl border bg-card">

@@ -1,3 +1,6 @@
+// File: src/components/fleet/score-card.tsx
+// (REPLACE the whole file)
+
 import { ShieldCheck, Trophy } from "lucide-react";
 import type { DriverScore } from "@/types";
 import { cn } from "@/lib/utils";
@@ -40,7 +43,7 @@ export function ScoreCard({
         <table className="w-full min-w-[420px] text-sm">
           <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
-              <th className="px-5 py-3 text-left">Roadside inspections</th>
+              <th className="px-5 py-3 text-left">Counts toward score</th>
               <th className="px-3 py-3 text-right">Count</th>
               <th className="px-3 py-3 text-right">Points each</th>
               <th className="px-5 py-3 text-right">Total</th>
@@ -70,8 +73,9 @@ export function ScoreCard({
       </div>
 
       <p className="flex items-center gap-2 border-t bg-muted/30 px-5 py-3 text-xs text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 text-green-600" /> Reporting truck
-        problems in pre-trip checks never lowers the score.
+        <ShieldCheck className="h-4 w-4 shrink-0 text-green-600" /> Reporting
+        truck problems in pre-trip checks never lowers the score. Overdue washes
+        count against the driver assigned to the truck.
       </p>
     </section>
   );
