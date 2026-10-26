@@ -206,7 +206,7 @@ export default async function TruckDetailPage({
         <WashList
           washes={washes}
           names={names}
-          emptyText="Washes drivers log for this truck show here."
+          emptyText="Washes drivers report in their pre-trip checks show here."
         />
       </section>
 

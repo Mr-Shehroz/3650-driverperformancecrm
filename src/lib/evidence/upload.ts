@@ -190,6 +190,21 @@ export async function prepareEvidence(
         : photo;
     }
     out.conditionPhotos = conditionPaths;
+    // Wash photos ("Has this truck been washed since the last trip?" = Yes)
+    if (isDataUrl(payload.washPhoto)) {
+      out.washPhoto = await uploadDataUrl(
+        FLEET_BUCKET,
+        fleetPath("pre_trip", uid, `${key}-wash-truck`),
+        payload.washPhoto,
+      );
+    }
+    if (isDataUrl(payload.washReceipt)) {
+      out.washReceipt = await uploadDataUrl(
+        FLEET_BUCKET,
+        fleetPath("pre_trip", uid, `${key}-wash-receipt`),
+        payload.washReceipt,
+      );
+    }
     if (isDataUrl(payload.signature)) {
       out.signature = await uploadDataUrl(
         FLEET_BUCKET,

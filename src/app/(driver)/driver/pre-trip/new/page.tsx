@@ -30,6 +30,7 @@ export default async function NewPreTripPage() {
       <DriverFormLayout
         tips={[
           "Take all 5 condition photos: front, rear, both sides and the cab.",
+          "If the truck was washed since the last trip, add a photo of the clean truck.",
           "Check every item, even if you drove this truck yesterday.",
           "Add a clear photo for anything that needs attention.",
           "Flagged items go straight to the maintenance team.",

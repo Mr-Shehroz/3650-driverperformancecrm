@@ -107,6 +107,9 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
     passenger_side: null,
     cab: null,
   });
+  const [washed, setWashed] = useState<boolean | null>(null);
+  const [washPhoto, setWashPhoto] = useState<string | null>(null);
+  const [washReceipt, setWashReceipt] = useState<string | null>(null);
   const [truckStatus, setTruckStatus] = useState<TruckStatus | "">("");
   const [notes, setNotes] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
@@ -140,6 +143,10 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
       conditionPhotos: Object.fromEntries(
         CONDITION_PHOTOS.map((c) => [c.key, condition[c.key] ?? undefined]),
       ),
+      washed: washed ?? undefined,
+      // Photos only count when the answer is Yes
+      washPhoto: washed ? (washPhoto ?? undefined) : undefined,
+      washReceipt: washed ? (washReceipt ?? undefined) : undefined,
       truckStatus: truckStatus || undefined,
       notes: notes.trim() || undefined,
       signature: signature ?? "",
@@ -331,6 +338,84 @@ export function PreTripForm({ trucks }: { trucks: TruckOption[] }) {
             />
           ))}
         </div>
+      </FormSection>
+
+      {/* Truck wash */}
+      <FormSection title="Truck wash">
+        <Field
+          label="Has this truck been washed since the last trip?"
+          error={errors.washed}
+        >
+          <div className="grid grid-cols-2 gap-2 sm:max-w-md">
+            {[
+              { value: true, label: "Yes" },
+              { value: false, label: "No" },
+            ].map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                onClick={() => {
+                  setWashed(o.value);
+                  clear("washed");
+                  if (!o.value) clear("washPhoto");
+                }}
+                className={cn(
+                  "flex h-12 items-center justify-center gap-1.5 rounded-lg border-2 bg-white text-[15px] font-semibold transition",
+                  washed === o.value
+                    ? o.value
+                      ? "border-green-600 bg-green-600 text-white"
+                      : "border-secondary bg-secondary text-white"
+                    : errors.washed
+                      ? "border-destructive text-foreground/80"
+                      : "border-border text-foreground/80 hover:border-foreground/30",
+                )}
+              >
+                {washed === o.value && <Check className="h-4 w-4" />} {o.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {washed === true && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <PhotoSlot
+                label="Clean truck"
+                value={washPhoto}
+                large
+                invalid={!!errors.washPhoto}
+                onChange={(p) => {
+                  setWashPhoto(p);
+                  clear("washPhoto");
+                }}
+              />
+              {errors.washPhoto && (
+                <p className="mt-1.5 text-sm font-medium text-destructive">
+                  {errors.washPhoto}
+                </p>
+              )}
+            </div>
+            <PhotoSlot
+              label="Receipt"
+              value={washReceipt}
+              optional
+              large
+              onChange={setWashReceipt}
+            />
+          </div>
+        )}
+        {washed === true && (
+          <p className="text-sm text-muted-foreground">
+            This updates the truck&apos;s last wash date and resets its wash
+            timer.
+          </p>
+        )}
+        {washed === false && (
+          <p className="text-sm text-muted-foreground">
+            No problem. The pre-trip still saves, and the truck&apos;s wash
+            timer keeps running.
+          </p>
+        )}
       </FormSection>
 
       {/* Checklist */}

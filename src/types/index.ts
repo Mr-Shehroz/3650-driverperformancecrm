@@ -378,6 +378,10 @@ export interface PreTripInspection {
   syncedOffline: boolean;
   /** Signed links; empty for pre-trips saved before condition photos existed */
   conditionPhotos: Partial<Record<ConditionPhotoKey, string>>;
+  /** "Has this truck been washed since the last trip?" */
+  washed: boolean;
+  washPhotoUrl: string | null;
+  washReceiptUrl: string | null;
 }
 
 export type TicketStatus = "open" | "in_progress" | "fixed";

@@ -114,6 +114,55 @@ export function InspectionDetail({
           </section>
         )}
 
+        {/* Truck wash */}
+        <section className="rounded-2xl border bg-card p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-bold">Truck wash</h2>
+            {inspection.washed ? (
+              <Pill tone="success">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Washed since last trip
+              </Pill>
+            ) : (
+              <Pill>Not washed since last trip</Pill>
+            )}
+          </div>
+          {inspection.washed && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                { label: "Clean truck", url: inspection.washPhotoUrl },
+                { label: "Receipt", url: inspection.washReceiptUrl },
+              ].map((p) => (
+                <figure key={p.label} className="min-w-0">
+                  {p.url ? (
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block overflow-hidden rounded-lg border bg-muted"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={p.url}
+                        alt={p.label}
+                        className="aspect-[16/10] w-full object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <div className="flex aspect-[16/10] items-center justify-center rounded-lg border border-dashed bg-muted/40 text-sm text-muted-foreground">
+                      {p.label === "Receipt"
+                        ? "No receipt"
+                        : "Photo unavailable"}
+                    </div>
+                  )}
+                  <figcaption className="mt-1.5 text-sm font-medium">
+                    {p.label}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Checklist */}
         <section className="rounded-2xl border bg-card">
           <div className="border-b px-4 py-3.5 sm:px-5">

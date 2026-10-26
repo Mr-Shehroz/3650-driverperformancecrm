@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
-  Droplets,
   CloudOff,
   CloudUpload,
   DollarSign,
@@ -37,7 +36,6 @@ import { DamageForm } from "@/components/driver/damage-form";
 import { ReviewForm } from "@/components/driver/review-form";
 import { UpsellForm } from "@/components/driver/upsell-form";
 import { PreTripForm } from "@/components/fleet/pre-trip-form";
-import { WashForm } from "@/components/fleet/wash-form";
 import { OutboxView } from "./outbox-view";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
@@ -440,25 +438,6 @@ function HomeView({
         <ChevronRight className="ml-auto h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-primary" />
       </a>
 
-      {/* Truck wash */}
-      <a
-        href="#/driver/wash/new"
-        className="group flex items-center gap-4 rounded-2xl border bg-card p-5 transition hover:border-primary/40"
-      >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Droplets className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-semibold">Mark truck washed</p>
-          <p className="text-sm text-muted-foreground">
-            {snapshot.trucks?.length
-              ? "Log a wash with a photo of the clean truck"
-              : "Open the app once online to load the truck list"}
-          </p>
-        </div>
-        <ChevronRight className="ml-auto h-5 w-5 shrink-0 text-muted-foreground transition group-hover:text-primary" />
-      </a>
-
       {localJobs.length > 0 && (
         <section>
           <h2 className="mb-4 text-lg font-bold sm:text-xl">
@@ -744,26 +723,6 @@ export function OfflineApp() {
         <SplitLayout aside={<OfflineTips />}>
           {snapshot.trucks?.length ? (
             <PreTripForm trucks={snapshot.trucks} />
-          ) : (
-            <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-              No trucks saved on this phone yet. Open the app once with signal,
-              then try again.
-            </p>
-          )}
-        </SplitLayout>
-      </>
-    );
-  } else if (path === "/driver/wash/new") {
-    view = (
-      <>
-        <BackLink href="/driver" label="Offline home" />
-        <Title
-          title="Mark truck washed"
-          description="Saved on this phone until you're back online."
-        />
-        <SplitLayout aside={<OfflineTips />}>
-          {snapshot.trucks?.length ? (
-            <WashForm trucks={snapshot.trucks} />
           ) : (
             <p className="rounded-xl border border-dashed bg-card px-4 py-10 text-center text-sm text-muted-foreground">
               No trucks saved on this phone yet. Open the app once with signal,
