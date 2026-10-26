@@ -164,6 +164,8 @@ async function toPreTrips(rows: PreTripRow[]): Promise<PreTripInspection[]> {
       r.signature_path,
       ...itemsOf(r).flatMap((i) => i.photos ?? []),
       ...Object.values(conditionOf(r)),
+      r.wash_photo_path,
+      r.wash_receipt_path,
     ]),
   );
   return rows.map((r) => ({
@@ -190,6 +192,13 @@ async function toPreTrips(rows: PreTripRow[]): Promise<PreTripInspection[]> {
         .map(([k, path]) => [k, path ? (signed.get(path) ?? "") : ""])
         .filter(([, url]) => url),
     ) as PreTripInspection["conditionPhotos"],
+    washed: r.washed,
+    washPhotoUrl: r.wash_photo_path
+      ? (signed.get(r.wash_photo_path) ?? null)
+      : null,
+    washReceiptUrl: r.wash_receipt_path
+      ? (signed.get(r.wash_receipt_path) ?? null)
+      : null,
   }));
 }
 
@@ -234,6 +243,10 @@ export async function createPreTrip(input: {
     photos: string[];
   }[];
   conditionPhotos: Record<ConditionPhotoKey, string>;
+  /** Yes = the database also logs the wash and updates the truck's last wash date */
+  washed: boolean;
+  washPhotoPath: string | null;
+  washReceiptPath: string | null;
   odometer: number;
   truckStatus: PreTripInspection["truckStatus"];
   notes?: string;
@@ -257,6 +270,9 @@ export async function createPreTrip(input: {
         photos: i.photos,
       })),
       condition_photos: { ...input.conditionPhotos },
+      washed: input.washed,
+      wash_photo_path: input.washed ? input.washPhotoPath : null,
+      wash_receipt_path: input.washed ? input.washReceiptPath : null,
       odometer: input.odometer,
       truck_status: input.truckStatus,
       notes: input.notes || null,

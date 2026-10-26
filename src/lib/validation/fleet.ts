@@ -67,6 +67,9 @@ export const preTripSchema = z
       )
       .length(6),
     conditionPhotos: conditionPhotosSchema(dataPhoto),
+    washed: z.boolean({ message: "Answer Yes or No" }),
+    washPhoto: z.string().startsWith("data:image/").optional(),
+    washReceipt: z.string().startsWith("data:image/").optional(),
     truckStatus: z.enum(["safe", "repair_soon", "do_not_drive"], {
       message: "Choose the truck status",
     }),
@@ -88,6 +91,13 @@ export const preTripSchema = z
         });
       }
     });
+    if (d.washed && !d.washPhoto) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["washPhoto"],
+        message: "Add a photo of the clean truck",
+      });
+    }
   });
 
 export type PreTripInput = z.infer<typeof preTripSchema>;
@@ -173,6 +183,9 @@ export const preTripServerSchema = z
       )
       .length(6),
     conditionPhotos: conditionPhotosSchema(storedPhoto),
+    washed: z.boolean({ message: "Answer Yes or No" }),
+    washPhoto: storagePath.optional(),
+    washReceipt: storagePath.optional(),
     truckStatus: z.enum(["safe", "repair_soon", "do_not_drive"], {
       message: "Choose the truck status",
     }),
@@ -192,6 +205,13 @@ export const preTripServerSchema = z
         });
       }
     });
+    if (d.washed && !d.washPhoto) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["washPhoto"],
+        message: "Add a photo of the clean truck",
+      });
+    }
   });
 export type PreTripServerInput = z.infer<typeof preTripServerSchema>;
 

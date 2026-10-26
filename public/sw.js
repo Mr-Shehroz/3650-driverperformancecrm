@@ -2,7 +2,7 @@
 // (REPLACE the whole file)
 
 /* DRS Performance Portal service worker */
-const VERSION = "drs-v5"; // change this on every big release so phones drop old saved files
+const VERSION = "drs-v6"; // change this on every big release so phones drop old saved files
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const SHELL_CACHE = `${VERSION}-shell`;

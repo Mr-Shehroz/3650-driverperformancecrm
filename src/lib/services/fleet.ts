@@ -50,10 +50,14 @@ export async function createPreTripFor(
     return { ok: false, fieldErrors: { truckId: "Choose an active truck" } };
 
   // Every file must be in this driver's own folder
+  const washPaths = d.washed
+    ? [d.washPhoto, d.washReceipt].filter((p): p is string => !!p)
+    : [];
   const paths = [
     d.signature,
     ...d.items.flatMap((i) => i.photos),
     ...Object.values(d.conditionPhotos),
+    ...washPaths,
   ];
   if (!paths.every((p) => isFleetPathFor(p, "pre_trip", user.id))) {
     return {
@@ -68,6 +72,9 @@ export async function createPreTripFor(
       driverId: user.id,
       items: d.items.map((i) => ({ ...i, notes: i.notes || undefined })),
       conditionPhotos: d.conditionPhotos,
+      washed: d.washed,
+      washPhotoPath: d.washed ? (d.washPhoto ?? null) : null,
+      washReceiptPath: d.washed ? (d.washReceipt ?? null) : null,
       odometer: d.odometer,
       truckStatus: d.truckStatus,
       notes: d.notes || undefined,
@@ -148,7 +155,10 @@ export async function createRoadsideFor(
   }
 }
 
-/** Driver marks a truck as washed. Used by the online form and by offline sync. */
+/**
+ * Old separate "Mark truck washed" form. Washes are now logged inside the pre-trip;
+ * this stays only so washes already saved offline on a phone still upload.
+ */
 export async function createWashFor(
   user: User,
   raw: unknown,

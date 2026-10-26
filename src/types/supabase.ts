@@ -486,6 +486,9 @@ export type Database = {
           synced_offline: boolean;
           truck_id: string;
           truck_status: Database["public"]["Enums"]["truck_status"];
+          wash_photo_path: string | null;
+          wash_receipt_path: string | null;
+          washed: boolean;
         };
         Insert: {
           captured_at_device: string;
@@ -502,6 +505,9 @@ export type Database = {
           synced_offline?: boolean;
           truck_id: string;
           truck_status: Database["public"]["Enums"]["truck_status"];
+          wash_photo_path?: string | null;
+          wash_receipt_path?: string | null;
+          washed?: boolean;
         };
         Update: {
           captured_at_device?: string;
@@ -518,6 +524,9 @@ export type Database = {
           synced_offline?: boolean;
           truck_id?: string;
           truck_status?: Database["public"]["Enums"]["truck_status"];
+          wash_photo_path?: string | null;
+          wash_receipt_path?: string | null;
+          washed?: boolean;
         };
         Relationships: [
           {
@@ -761,6 +770,7 @@ export type Database = {
           lng: number | null;
           notes: string | null;
           photo_path: string;
+          pre_trip_id: string | null;
           receipt_path: string | null;
           received_at_server: string;
           synced_offline: boolean;
@@ -774,6 +784,7 @@ export type Database = {
           lng?: number | null;
           notes?: string | null;
           photo_path: string;
+          pre_trip_id?: string | null;
           receipt_path?: string | null;
           received_at_server?: string;
           synced_offline?: boolean;
@@ -787,6 +798,7 @@ export type Database = {
           lng?: number | null;
           notes?: string | null;
           photo_path?: string;
+          pre_trip_id?: string | null;
           receipt_path?: string | null;
           received_at_server?: string;
           synced_offline?: boolean;
@@ -798,6 +810,13 @@ export type Database = {
             columns: ["driver_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "truck_washes_pre_trip_id_fkey";
+            columns: ["pre_trip_id"];
+            isOneToOne: true;
+            referencedRelation: "pre_trips";
             referencedColumns: ["id"];
           },
           {

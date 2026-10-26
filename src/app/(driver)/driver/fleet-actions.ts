@@ -5,11 +5,7 @@
 
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
-import {
-  createPreTripFor,
-  createRoadsideFor,
-  createWashFor,
-} from "@/lib/services/fleet";
+import { createPreTripFor, createRoadsideFor } from "@/lib/services/fleet";
 
 export type FleetResult = {
   error?: string;
@@ -35,11 +31,4 @@ export async function createRoadsideAction(
   const res = await createRoadsideFor(user, input);
   if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
   redirect("/driver/roadside");
-}
-
-export async function createWashAction(input: unknown): Promise<FleetResult> {
-  const user = await requireRole("driver");
-  const res = await createWashFor(user, input);
-  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
-  redirect("/driver/wash?saved=1");
 }
