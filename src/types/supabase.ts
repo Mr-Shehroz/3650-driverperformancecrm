@@ -140,6 +140,47 @@ export type Database = {
           },
         ];
       };
+      granot_events: {
+        Row: {
+          event_type: string;
+          id: string;
+          job_number: string | null;
+          lead_id: string | null;
+          message: string | null;
+          payload: Json;
+          received_at: string;
+          status: string;
+        };
+        Insert: {
+          event_type: string;
+          id?: string;
+          job_number?: string | null;
+          lead_id?: string | null;
+          message?: string | null;
+          payload: Json;
+          received_at?: string;
+          status?: string;
+        };
+        Update: {
+          event_type?: string;
+          id?: string;
+          job_number?: string | null;
+          lead_id?: string | null;
+          message?: string | null;
+          payload?: Json;
+          received_at?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "granot_events_lead_id_fkey";
+            columns: ["lead_id"];
+            isOneToOne: false;
+            referencedRelation: "leads";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       jobs: {
         Row: {
           created_at: string;
@@ -256,6 +297,8 @@ export type Database = {
           created_at: string;
           date: string;
           granot_id: string;
+          granot_rep: string | null;
+          granot_source: string | null;
           id: string;
           is_sample: boolean;
           job_value: number | null;
@@ -272,6 +315,8 @@ export type Database = {
           created_at?: string;
           date: string;
           granot_id: string;
+          granot_rep?: string | null;
+          granot_source?: string | null;
           id?: string;
           is_sample?: boolean;
           job_value?: number | null;
@@ -288,6 +333,8 @@ export type Database = {
           created_at?: string;
           date?: string;
           granot_id?: string;
+          granot_rep?: string | null;
+          granot_source?: string | null;
           id?: string;
           is_sample?: boolean;
           job_value?: number | null;
@@ -551,6 +598,7 @@ export type Database = {
           avatar_url: string | null;
           created_at: string;
           email: string;
+          granot_name: string | null;
           id: string;
           name: string;
           phone: string | null;
@@ -562,6 +610,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           email: string;
+          granot_name?: string | null;
           id: string;
           name: string;
           phone?: string | null;
@@ -573,6 +622,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           email?: string;
+          granot_name?: string | null;
           id?: string;
           name?: string;
           phone?: string | null;
