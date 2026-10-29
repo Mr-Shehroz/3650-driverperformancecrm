@@ -22,6 +22,7 @@ import {
   Siren,
   Wrench,
   Container,
+  Webhook,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -70,6 +71,7 @@ export const ADMIN_NAV: NavGroup[] = [
         label: "Lead Costs",
         icon: DollarSign,
       },
+      { href: "/admin/sales/granot", label: "Granot Sync", icon: Webhook },
     ],
   },
   {

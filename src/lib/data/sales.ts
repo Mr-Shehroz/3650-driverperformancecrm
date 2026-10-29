@@ -1,5 +1,5 @@
 // File: src/lib/data/sales.ts
-// (NEW file)
+// (REPLACE the whole file)
 
 import {
   endOfMonth,
@@ -384,6 +384,7 @@ export async function removeLeadCost(
   week: string,
 ): Promise<number> {
   const sb = await createClient();
+  // null = remove this week's cost (the database function accepts it; generated types say number)
   const { data, error } = await sb.rpc("admin_set_weekly_cost", {
     p_source: sourceId,
     p_week: week,
@@ -399,9 +400,10 @@ export async function overrideLeadCost(
   cost: number | null,
 ): Promise<{ id: string } | null> {
   const sb = await createClient();
+  // null = back to the weekly cost (the database function accepts it; generated types say number)
   const { data, error } = await sb.rpc("admin_override_lead_cost", {
     p_lead: leadId,
-    p_cost: cost as number,
+    p_cost: cost as unknown as number,
   });
   if (error) {
     if (/not found/i.test(error.message)) return null;
@@ -434,4 +436,38 @@ export async function clearSampleLeads(): Promise<number> {
   const { data, error } = await sb.rpc("admin_clear_sample_leads");
   if (error) throw error;
   return data ?? 0;
+}
+
+/* =========================================================
+   Granot webhook log (admin only)
+   ========================================================= */
+export type GranotEventRow = {
+  id: string;
+  receivedAt: string;
+  type: string;
+  jobNumber: string | null;
+  status: string;
+  message: string | null;
+  payload: Record<string, string>;
+  leadId: string | null;
+};
+
+export async function getGranotEvents(limit = 100): Promise<GranotEventRow[]> {
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from("granot_events")
+    .select("*")
+    .order("received_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((e) => ({
+    id: e.id,
+    receivedAt: e.received_at,
+    type: e.event_type,
+    jobNumber: e.job_number,
+    status: e.status,
+    message: e.message,
+    payload: (e.payload as Record<string, string>) ?? {},
+    leadId: e.lead_id,
+  }));
 }
