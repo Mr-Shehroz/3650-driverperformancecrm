@@ -1,15 +1,20 @@
 // File: src/app/(admin)/admin/sales/granot/page.tsx
-// (NEW file)
+// (REPLACE the whole file)
 
 import {
   AlertTriangle,
   CheckCircle2,
   Inbox,
   KeyRound,
+  UserRound,
   Webhook,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getGranotEvents } from "@/lib/data";
+import {
+  getGranotEvents,
+  getRepGranotNames,
+  getUnmatchedGranotReps,
+} from "@/lib/data";
 import { formatDateTimeET } from "@/lib/format";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -18,6 +23,7 @@ import {
   CopyField,
   GranotTestButtons,
 } from "@/components/sales/granot-test-buttons";
+import { GranotRepMap } from "@/components/sales/granot-rep-map";
 
 export const metadata = { title: "Granot Sync" };
 export const dynamic = "force-dynamic";
@@ -42,7 +48,11 @@ const STATUS_TONE: Record<
 
 export default async function GranotSyncPage() {
   await requireRole("admin");
-  const events = await getGranotEvents(100);
+  const [events, reps, unmatched] = await Promise.all([
+    getGranotEvents(100),
+    getRepGranotNames(),
+    getUnmatchedGranotReps(),
+  ]);
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
   const url = `${base || "https://your-domain"}/api/granot/webhook`;
   const tokenSet = (process.env.GRANOT_WEBHOOK_TOKEN ?? "").length >= 20;
@@ -97,6 +107,51 @@ export default async function GranotSyncPage() {
           <p className="text-xs text-muted-foreground">
             Last event: {last ? formatDateTimeET(last.receivedAt) : "none yet"}
           </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="rounded-2xl border bg-card p-5">
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <UserRound className="h-5 w-5 text-primary" /> Sales reps in Granot
+          </h2>
+          <p className="mb-2 mt-1 text-sm text-muted-foreground">
+            Granot sends the rep&apos;s <b>Granot username</b>. Enter each
+            rep&apos;s username so their leads are linked to them. Saving also
+            links their earlier unassigned leads.
+          </p>
+          <GranotRepMap reps={reps} />
+        </div>
+        <div className="rounded-2xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Usernames not linked yet</h2>
+          {unmatched.length ? (
+            <>
+              <p className="mb-3 mt-1 text-sm text-muted-foreground">
+                These came from Granot but don&apos;t match any rep. Copy one
+                into the rep&apos;s box.
+              </p>
+              <ul className="space-y-1.5">
+                {unmatched.map((u) => (
+                  <li
+                    key={u.username}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2 text-sm"
+                  >
+                    <code className="truncate font-semibold text-amber-900">
+                      {u.username}
+                    </code>
+                    <span className="shrink-0 text-amber-800">
+                      {u.leads} lead{u.leads === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-green-600" /> All Granot
+              usernames are linked.
+            </p>
+          )}
         </div>
       </section>
 

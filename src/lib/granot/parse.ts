@@ -1,5 +1,5 @@
 // File: src/lib/granot/parse.ts
-// (NEW file)
+// (REPLACE the whole file)
 
 /*
  * Reads what Granot posts to our webhook. Granot sends simple key=value fields
@@ -75,13 +75,17 @@ export function parseMoney(v: string | null): number | null {
 }
 
 export function detectType(f: Record<string, string>): GranotEventType {
-  const status = (
-    pick(f, "lead_status", "status", "event", "event_type") ?? ""
+  // Granot: lead_status = "new lead" / "priority update"; status = "Booked" / "Followup"
+  const leadStatus = (
+    pick(f, "lead_status", "event", "event_type") ?? ""
   ).toLowerCase();
-  if (/un-?book/.test(status)) return "unbooked";
-  if (/book/.test(status)) return "booked";
-  if (/priorit/.test(status)) return "priority";
-  if (/new/.test(status)) return "new_lead";
+  const status = (f.status ?? "").toLowerCase();
+  if (/new/.test(leadStatus)) return "new_lead";
+  if (/priorit/.test(leadStatus)) return "priority";
+  if (/un-?book/.test(leadStatus) || /un-?book/.test(status)) return "unbooked";
+  if (/book/.test(leadStatus) || /book/.test(status)) return "booked";
+  // A booking event that moved the job back to follow-up = unbooked
+  if (/follow/.test(status)) return "unbooked";
   // No clear status: guess from the fields Granot includes in each event
   if (f.volume || f.payment || f.balance) return "booked";
   if (f.lead_date || f.first_name || f.firstname) return "new_lead";
@@ -95,6 +99,7 @@ export function parseGranot(input: Record<string, unknown>): GranotEvent {
     jobNumber: pick(f, "job_number", "jobnumber", "job_no", "job", "lead_id"),
     leadDate: parseDate(pick(f, "lead_date", "date", "created_date")),
     source: pick(f, "lead_source", "source", "lead_label", "referral"),
+    // Granot sends the rep's Granot username
     rep: pick(
       f,
       "rep",
@@ -102,6 +107,7 @@ export function parseGranot(input: Record<string, unknown>): GranotEvent {
       "sales_rep",
       "salesman",
       "user",
+      "username",
       "agent",
     ),
     totalEstimate: parseMoney(

@@ -471,3 +471,43 @@ export async function getGranotEvents(limit = 100): Promise<GranotEventRow[]> {
     leadId: e.lead_id,
   }));
 }
+/** Active sales reps with their Granot username */
+export async function getRepGranotNames(): Promise<
+  { id: string; name: string; granotName: string }[]
+> {
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id, name, granot_name")
+    .eq("role", "sales_rep")
+    .eq("active", true)
+    .order("name");
+  if (error) throw error;
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    granotName: p.granot_name ?? "",
+  }));
+}
+
+/** Granot usernames on leads that aren't linked to a portal rep yet */
+export async function getUnmatchedGranotReps(): Promise<
+  { username: string; leads: number }[]
+> {
+  const sb = await createClient();
+  const { data, error } = await sb
+    .from("leads")
+    .select("granot_rep")
+    .is("rep_id", null)
+    .not("granot_rep", "is", null)
+    .limit(5000);
+  if (error) throw error;
+  const counts = new Map<string, number>();
+  for (const l of data ?? []) {
+    const u = (l.granot_rep ?? "").trim();
+    if (u) counts.set(u, (counts.get(u) ?? 0) + 1);
+  }
+  return Array.from(counts, ([username, leads]) => ({ username, leads })).sort(
+    (a, b) => b.leads - a.leads,
+  );
+}
