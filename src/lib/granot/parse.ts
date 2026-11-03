@@ -75,7 +75,7 @@ export function parseMoney(v: string | null): number | null {
 }
 
 export function detectType(f: Record<string, string>): GranotEventType {
-  // Granot: lead_status = "new lead" / "priority update"; status = "Booked" / "Followup"
+  // Granot: lead_status = "new lead" / "priority update" / "booked" / "FollowUp" (unbooked)
   const leadStatus = (
     pick(f, "lead_status", "event", "event_type") ?? ""
   ).toLowerCase();
@@ -83,9 +83,9 @@ export function detectType(f: Record<string, string>): GranotEventType {
   if (/new/.test(leadStatus)) return "new_lead";
   if (/priorit/.test(leadStatus)) return "priority";
   if (/un-?book/.test(leadStatus) || /un-?book/.test(status)) return "unbooked";
-  if (/book/.test(leadStatus) || /book/.test(status)) return "booked";
   // A booking event that moved the job back to follow-up = unbooked
-  if (/follow/.test(status)) return "unbooked";
+  if (/follow/.test(leadStatus) || /follow/.test(status)) return "unbooked";
+  if (/book/.test(leadStatus) || /book/.test(status)) return "booked";
   // No clear status: guess from the fields Granot includes in each event
   if (f.volume || f.payment || f.balance) return "booked";
   if (f.lead_date || f.first_name || f.firstname) return "new_lead";
