@@ -1,3 +1,6 @@
+// File: src/app/(admin)/admin/drivers/export/route.ts
+// (REPLACE the whole file)
+
 import { NextResponse, type NextRequest } from "next/server";
 import { format } from "date-fns";
 import { getSession } from "@/lib/auth/session";
@@ -40,8 +43,9 @@ export async function GET(req: NextRequest) {
       p(r.damageRate),
       r2(r.damageCost),
       r.reviewCount,
-      r2(r.avgStars),
-      p(r.fiveStarRate),
+      // No reviews: leave blank (like the screen's "—"), not 0
+      r.reviewCount ? r2(r.avgStars) : "",
+      r.reviewCount ? p(r.fiveStarRate) : "",
       r2(r.upsellTotal),
       r2(r.upsellAvg),
       p(r.onTimePickupRate),
