@@ -20,6 +20,7 @@ import type {
   SalesMonthlyPoint,
   SourceBreakdownRow,
 } from "@/types";
+import { UNMATCHED_REP_ID } from "@/types";
 import type { Database } from "@/types/supabase";
 
 type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
@@ -163,7 +164,8 @@ export async function getLeads(
   } = {},
 ): Promise<Lead[]> {
   const sb = await createClient();
-  let q = sb.from("leads").select(LEAD_COLS);
+  // Leads with "test" in the customer name or lead source never count
+  let q = sb.from("leads").select(LEAD_COLS).eq("is_test", false);
   if (opts.repId) q = q.eq("rep_id", opts.repId);
   if (opts.sourceId) q = q.eq("source_id", opts.sourceId);
   if (opts.status === "open" || opts.status === "booked")
@@ -209,11 +211,22 @@ export async function getAllRepMetrics(
   opts: { range?: DateRange; sourceId?: string } = {},
 ) {
   const [reps, leads] = await Promise.all([getReps(true), getLeads(opts)]);
-  return reps.map((r) => ({
+  const rows: RepMetrics[] = reps.map((r) => ({
     repId: r.id,
     repName: r.name,
     ...summarizeLeads(leads.filter((l) => l.repId === r.id)),
   }));
+  // Leads whose Granot rep isn't linked to anyone: still counted, shown as "Unmatched"
+  const known = new Set(reps.map((r) => r.id));
+  const unmatched = leads.filter((l) => !l.repId || !known.has(l.repId));
+  if (unmatched.length) {
+    rows.push({
+      repId: UNMATCHED_REP_ID,
+      repName: "Unmatched",
+      ...summarizeLeads(unmatched),
+    });
+  }
+  return rows;
 }
 
 export async function getSourceBreakdown(
@@ -498,6 +511,7 @@ export async function getUnmatchedGranotReps(): Promise<
   const { data, error } = await sb
     .from("leads")
     .select("granot_rep")
+    .eq("is_test", false)
     .is("rep_id", null)
     .not("granot_rep", "is", null)
     .limit(5000);

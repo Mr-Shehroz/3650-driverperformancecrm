@@ -115,6 +115,9 @@ export interface DriverMetrics {
   onTimeDeliveryRate: number | null;
 }
 
+/** Rep row for leads whose Granot rep isn't linked to a portal account yet */
+export const UNMATCHED_REP_ID = "unmatched";
+
 export interface RepMetrics {
   repId: string;
   repName: string;
@@ -403,9 +406,17 @@ export interface MaintenanceTicket {
   severity: TruckStatus;
   status: TicketStatus;
   fixNote?: string;
+  /** YYYY-MM-DD, set when the ticket is fixed */
+  fixedOn?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+/** Ticket / check item name. "general" = truck marked Repair soon / Do not drive with no item flagged */
+export const ticketItemLabel = (key: string) =>
+  key === "general"
+    ? "Truck status"
+    : (CHECK_ITEMS.find((c) => c.key === key)?.label ?? key);
 
 export type RoadsideResult = "clean" | "violations" | "out_of_service";
 

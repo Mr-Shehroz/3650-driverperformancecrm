@@ -1,3 +1,6 @@
+// File: src/components/fleet/ticket-card.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -10,12 +13,21 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { updateTicketStatusAction } from "@/app/(admin)/admin/fleet-actions";
 import { formatDateTimeET } from "@/lib/format";
 import {
-  CHECK_ITEMS,
+  ticketItemLabel,
   type MaintenanceTicket,
   type TicketStatus,
 } from "@/types";
 import { TicketStatusPill, TruckStatusPill } from "./status-badges";
 import { cn } from "@/lib/utils";
+
+/** "2026-11-10" → "Nov 10, 2026" (a plain date, no time zone shift) */
+const formatDay = (d: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${d}T00:00:00Z`));
 
 export function TicketCard({
   ticket,
@@ -31,8 +43,7 @@ export function TicketCard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmFix, setConfirmFix] = useState(false);
-  const label =
-    CHECK_ITEMS.find((c) => c.key === ticket.itemKey)?.label ?? ticket.itemKey;
+  const label = ticketItemLabel(ticket.itemKey);
 
   const move = (status: TicketStatus) =>
     startTransition(async () => {
@@ -94,7 +105,10 @@ export function TicketCard({
       )}
       {ticket.status === "fixed" && ticket.fixNote && (
         <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
-          <span className="font-semibold">Fixed:</span> {ticket.fixNote}
+          <span className="font-semibold">
+            Fixed{ticket.fixedOn ? ` on ${formatDay(ticket.fixedOn)}` : ""}:
+          </span>{" "}
+          {ticket.fixNote}
         </p>
       )}
 
@@ -148,12 +162,18 @@ export function TicketCard({
         open={confirmFix}
         onClose={() => setConfirmFix(false)}
         title="Mark as fixed?"
-        description={`Unit ${unitNumber} · ${label}`}
+        description={`Unit ${unitNumber} · ${label}. When nothing else is open on this truck, its Repair soon / Do not drive tag is cleared.`}
         confirmLabel="Mark fixed"
         reasonLabel="What was fixed?"
         reasonPlaceholder="e.g. Replaced rear left inner tire"
-        onConfirm={async (note) => {
-          const res = await updateTicketStatusAction(ticket.id, "fixed", note);
+        dateLabel="Date fixed"
+        onConfirm={async (note, date) => {
+          const res = await updateTicketStatusAction(
+            ticket.id,
+            "fixed",
+            note,
+            date,
+          );
           if (res?.error) {
             toast.error(res.error);
             return false;

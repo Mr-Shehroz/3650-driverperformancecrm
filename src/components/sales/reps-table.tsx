@@ -1,3 +1,6 @@
+// File: src/components/sales/reps-table.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -8,7 +11,7 @@ import { Pill } from "@/components/shared/pill";
 import { NativeSelect } from "@/components/driver/form-bits";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { RepMetrics } from "@/types";
+import { UNMATCHED_REP_ID, type RepMetrics } from "@/types";
 
 export type RepRow = RepMetrics & { active: boolean };
 type Key = keyof RepMetrics;
@@ -41,6 +44,22 @@ const COLS: {
   },
   { key: "revenue", label: "Revenue", fmt: (r) => formatCurrency(r.revenue) },
 ];
+
+/** Unmatched leads open the Granot Sync page, where usernames are linked to reps */
+const rowHref = (r: RepRow) =>
+  r.repId === UNMATCHED_REP_ID
+    ? "/admin/sales/granot"
+    : `/admin/sales/reps/${r.repId}`;
+
+function RowBadge({ r, className }: { r: RepRow; className?: string }) {
+  if (r.repId === UNMATCHED_REP_ID)
+    return (
+      <Pill tone="warning" className={className}>
+        Not linked to a rep
+      </Pill>
+    );
+  return !r.active ? <Pill className={className}>Inactive</Pill> : null;
+}
 
 function SortIcon({
   column,
@@ -125,7 +144,7 @@ export function RepsTable({ rows }: { rows: RepRow[] }) {
           {sorted.map((r, i) => (
             <Link
               key={r.repId}
-              href={`/admin/sales/reps/${r.repId}`}
+              href={rowHref(r)}
               className="block rounded-xl border bg-card p-4"
             >
               <div className="flex items-center gap-3">
@@ -135,7 +154,7 @@ export function RepsTable({ rows }: { rows: RepRow[] }) {
                 <UserAvatar name={r.repName} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{r.repName}</p>
-                  {!r.active && <Pill className="mt-0.5">Inactive</Pill>}
+                  <RowBadge r={r} className="mt-0.5" />
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -205,10 +224,7 @@ export function RepsTable({ rows }: { rows: RepRow[] }) {
                     {i + 1}
                   </td>
                   <td className="px-3 py-3">
-                    <Link
-                      href={`/admin/sales/reps/${r.repId}`}
-                      className="flex items-center gap-3"
-                    >
+                    <Link href={rowHref(r)} className="flex items-center gap-3">
                       <UserAvatar
                         name={r.repName}
                         className="h-8 w-8 text-xs"
@@ -216,7 +232,7 @@ export function RepsTable({ rows }: { rows: RepRow[] }) {
                       <span className="whitespace-nowrap font-semibold group-hover:text-primary">
                         {r.repName}
                       </span>
-                      {!r.active && <Pill>Inactive</Pill>}
+                      <RowBadge r={r} />
                     </Link>
                   </td>
                   {COLS.map((c) => (
@@ -231,10 +247,7 @@ export function RepsTable({ rows }: { rows: RepRow[] }) {
                     </td>
                   ))}
                   <td className="px-3">
-                    <Link
-                      href={`/admin/sales/reps/${r.repId}`}
-                      aria-label={`Open ${r.repName}`}
-                    >
+                    <Link href={rowHref(r)} aria-label={`Open ${r.repName}`}>
                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
                     </Link>
                   </td>

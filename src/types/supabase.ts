@@ -301,6 +301,7 @@ export type Database = {
           granot_source: string | null;
           id: string;
           is_sample: boolean;
+          is_test: boolean | null;
           job_value: number | null;
           lead_cost: number;
           raw: Json | null;
@@ -319,6 +320,7 @@ export type Database = {
           granot_source?: string | null;
           id?: string;
           is_sample?: boolean;
+          is_test?: boolean | null;
           job_value?: number | null;
           lead_cost?: number;
           raw?: Json | null;
@@ -337,6 +339,7 @@ export type Database = {
           granot_source?: string | null;
           id?: string;
           is_sample?: boolean;
+          is_test?: boolean | null;
           job_value?: number | null;
           lead_cost?: number;
           raw?: Json | null;
@@ -367,6 +370,7 @@ export type Database = {
           created_at: string;
           driver_id: string;
           fix_note: string | null;
+          fixed_on: string | null;
           id: string;
           inspection_id: string;
           item_key: string;
@@ -382,6 +386,7 @@ export type Database = {
           created_at?: string;
           driver_id: string;
           fix_note?: string | null;
+          fixed_on?: string | null;
           id?: string;
           inspection_id: string;
           item_key: string;
@@ -397,6 +402,7 @@ export type Database = {
           created_at?: string;
           driver_id?: string;
           fix_note?: string | null;
+          fixed_on?: string | null;
           id?: string;
           inspection_id?: string;
           item_key?: string;

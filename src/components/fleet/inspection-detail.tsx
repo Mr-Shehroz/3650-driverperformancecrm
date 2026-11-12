@@ -18,7 +18,7 @@ import { Pill } from "@/components/shared/pill";
 import { PhotoThumb } from "@/components/shared/photo-thumb";
 import { formatDateTimeET } from "@/lib/format";
 import {
-  CHECK_ITEMS,
+  ticketItemLabel,
   type MaintenanceTicket,
   type PreTripInspection,
   type Truck,
@@ -27,8 +27,7 @@ import { TicketStatusPill, TruckStatusPill } from "./status-badges";
 import { ConditionPhotoGrid } from "./wash-bits";
 import { cn } from "@/lib/utils";
 
-const itemLabel = (key: string) =>
-  CHECK_ITEMS.find((c) => c.key === key)?.label ?? key;
+const itemLabel = ticketItemLabel;
 
 export function InspectionDetail({
   inspection,

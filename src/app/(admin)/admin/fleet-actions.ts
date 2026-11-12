@@ -73,6 +73,7 @@ export async function updateTicketStatusAction(
   id: string,
   status: TicketStatus,
   fixNote?: string,
+  fixedOn?: string,
 ): Promise<FleetAdminResult> {
   await requireRole("admin");
   if (!["open", "in_progress", "fixed"].includes(status))
@@ -80,8 +81,22 @@ export async function updateTicketStatusAction(
   if (status === "fixed" && (!fixNote || fixNote.trim().length < 3)) {
     return { error: "Add a short note about the fix." };
   }
+  if (status === "fixed") {
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York",
+    }).format(new Date());
+    if (!fixedOn || !/^\d{4}-\d{2}-\d{2}$/.test(fixedOn))
+      return { error: "Choose the date it was fixed." };
+    if (fixedOn > today)
+      return { error: "The fix date can't be in the future." };
+  }
   try {
-    const t = await updateTicketStatus(id, status, fixNote?.trim());
+    const t = await updateTicketStatus(
+      id,
+      status,
+      fixNote?.trim(),
+      status === "fixed" ? fixedOn : undefined,
+    );
     if (!t) return { error: "Ticket not found." };
   } catch {
     return { error: "Couldn't update the ticket. Please try again." };

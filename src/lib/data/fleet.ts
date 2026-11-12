@@ -471,6 +471,7 @@ export async function getTickets(
       severity: t.severity,
       status: t.status,
       fixNote: t.fix_note ?? undefined,
+      fixedOn: t.fixed_on ?? undefined,
       createdAt: t.created_at,
       updatedAt: t.updated_at,
     }))
@@ -485,10 +486,15 @@ export async function updateTicketStatus(
   id: string,
   status: TicketStatus,
   fixNote?: string,
+  fixedOn?: string,
 ) {
   const sb = await createClient();
   const patch: Tables["maintenance_tickets"]["Update"] = { status };
-  if (status === "fixed") patch.fix_note = fixNote ?? null;
+  // Fixing also clears the truck's Repair soon / Do not drive tag (database trigger)
+  if (status === "fixed") {
+    patch.fix_note = fixNote ?? null;
+    patch.fixed_on = fixedOn ?? null;
+  }
   const { data, error } = await sb
     .from("maintenance_tickets")
     .update(patch)

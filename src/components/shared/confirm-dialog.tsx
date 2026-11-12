@@ -1,3 +1,6 @@
+// File: src/components/shared/confirm-dialog.tsx
+// (REPLACE the whole file)
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -16,9 +19,20 @@ type Props = {
   /** When set, a reason is required before confirming */
   reasonLabel?: string;
   reasonPlaceholder?: string;
+  /** When set, a date is required too (defaults to today, can't be in the future) */
+  dateLabel?: string;
   /** Return false to keep the dialog open (e.g. on error) */
-  onConfirm: (reason?: string) => Promise<boolean | void> | boolean | void;
+  onConfirm: (
+    reason?: string,
+    date?: string,
+  ) => Promise<boolean | void> | boolean | void;
 };
+
+/** Today in company (Eastern) time, as YYYY-MM-DD */
+const todayET = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(
+    new Date(),
+  );
 
 export function ConfirmDialog({
   open,
@@ -29,15 +43,18 @@ export function ConfirmDialog({
   tone = "default",
   reasonLabel,
   reasonPlaceholder,
+  dateLabel,
   onConfirm,
 }: Props) {
   const [reason, setReason] = useState("");
+  const [date, setDate] = useState(todayET);
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
   const close = () => {
     if (pending) return;
     setReason("");
+    setDate(todayET());
     setError(undefined);
     onClose();
   };
@@ -47,10 +64,18 @@ export function ConfirmDialog({
       setError("Please enter a reason (at least 3 characters).");
       return;
     }
+    if (dateLabel && (!date || date > todayET())) {
+      setError("Choose a date (today or earlier).");
+      return;
+    }
     startTransition(async () => {
-      const ok = await onConfirm(reasonLabel ? reason.trim() : undefined);
+      const ok = await onConfirm(
+        reasonLabel ? reason.trim() : undefined,
+        dateLabel ? date : undefined,
+      );
       if (ok !== false) {
         setReason("");
+        setDate(todayET());
         setError(undefined);
         onClose();
       }
@@ -95,6 +120,28 @@ export function ConfirmDialog({
               placeholder={reasonPlaceholder}
               aria-invalid={!!error}
               className="min-h-[90px] w-full rounded-lg border border-input bg-white px-3 py-2.5 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 aria-[invalid=true]:border-destructive"
+            />
+            {error && !dateLabel && (
+              <p className="text-sm font-medium text-destructive">{error}</p>
+            )}
+          </div>
+        )}
+
+        {dateLabel && (
+          <div className="space-y-2">
+            <label htmlFor="confirm-date" className="text-[15px] font-semibold">
+              {dateLabel}
+            </label>
+            <input
+              id="confirm-date"
+              type="date"
+              value={date}
+              max={todayET()}
+              onChange={(e) => {
+                setDate(e.target.value);
+                if (error) setError(undefined);
+              }}
+              className="h-12 w-full rounded-lg border border-input bg-white px-3 text-base outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             {error && (
               <p className="text-sm font-medium text-destructive">{error}</p>

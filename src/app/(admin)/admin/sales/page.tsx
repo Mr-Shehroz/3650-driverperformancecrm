@@ -58,7 +58,7 @@ export default async function AdminSalesPage({
   const active = Object.fromEntries(reps.map((r) => [r.id, r.active]));
   const rows: RepRow[] = metrics.map((m) => ({
     ...m,
-    active: active[m.repId] ?? false,
+    active: active[m.repId] ?? true, // "Unmatched" row isn't a person
   }));
   const t = repTotals(metrics);
   const exportQuery = `${filtersToQuery(sp)}${sourceId ? `&source=${sourceId}` : ""}`;
